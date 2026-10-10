@@ -10,6 +10,7 @@ import { ProfileLoginModal } from './components/ProfileLoginModal';
 import { UserManagementModal } from './components/UserManagementModal';
 import { GroceryView } from './components/GroceryView';
 import { ScheduleView } from './components/ScheduleView';
+import { CameraFeedCard } from './components/CameraFeedCard';
 import { HAEntityState, ScheduleItem, GroceryItem, DeviceGroup, UserProfile } from './types';
 import { 
   Calendar as CalendarIcon, 
@@ -23,6 +24,7 @@ import {
   Activity,
   Radio,
   Bell,
+  Camera,
   AlertCircle, 
   ShoppingCart,
   CheckCircle2,
@@ -653,7 +655,10 @@ export const App: React.FC = () => {
   // Security perimeter sensors (Doors, Windows, Motion sensors)
   const securitySensors = entities.filter((e) => isSecuritySensor(e));
 
-  const hasSecurityDevices = securityControls.length > 0 || securitySensors.length > 0;
+  // Video feed cameras
+  const cameraEntities = entities.filter((e) => e.entity_id.startsWith('camera.'));
+
+  const hasSecurityDevices = securityControls.length > 0 || securitySensors.length > 0 || cameraEntities.length > 0;
 
   // Auto-redirect to home if currently on security tab but no security devices exist
   useEffect(() => {
@@ -912,11 +917,33 @@ export const App: React.FC = () => {
                   Security & Perimeter Center
                 </h2>
                 <p className="text-[11px] font-semibold text-slate-400 mt-0.5">
-                  Live perimeter sensors and protected high-impact controls with required action confirmation.
+                  Live camera video streams, perimeter sensors, and protected high-impact controls with safety confirmation.
                 </p>
               </div>
 
-              {/* SECTION A: Perimeter Sensor Status Grid */}
+              {/* SECTION 1: Live Security Camera Video Feeds */}
+              {cameraEntities.length > 0 && (
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-sm font-extrabold uppercase tracking-wider text-slate-500 flex items-center gap-2">
+                      <Camera className="w-4 h-4 text-indigo-600" />
+                      Live Camera Feeds ({cameraEntities.length})
+                    </h3>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {cameraEntities.map((camera) => (
+                      <CameraFeedCard
+                        key={camera.entity_id}
+                        camera={camera}
+                        customName={customNames[camera.entity_id]}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* SECTION 2: Perimeter Sensor Status Grid */}
               {securitySensors.length > 0 && (
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">

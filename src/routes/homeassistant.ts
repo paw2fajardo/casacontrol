@@ -102,4 +102,98 @@ export const homeassistantRoutes: FastifyPluginAsync<HomeAssistantRouteOptions> 
       }
     }
   );
+
+  // GET /api/homeassistant/camera/snapshot/:entityId
+  fastify.get<{ Params: { entityId: string } }>(
+    '/api/homeassistant/camera/snapshot/:entityId',
+    async (request, reply) => {
+      const { entityId } = request.params;
+      const baseUrl = (config.HOMEASSISTANT_BASE_URL || '').replace(/\/+$/, '');
+      const token = (config.HOMEASSISTANT_AUTH_TOKEN || '').trim();
+
+      if (!baseUrl) {
+        return reply.code(502).send({ error: 'Home Assistant base URL not configured' });
+      }
+
+      try {
+        const response = await fetch(`${baseUrl}/api/camera_proxy/${encodeURIComponent(entityId)}`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+        });
+
+        if (!response.ok) {
+          return reply.code(response.status).send({ error: `HA returned ${response.status}` });
+        }
+
+        const contentType = response.headers.get('content-type') || 'image/jpeg';
+        const buffer = await response.arrayBuffer();
+        return reply
+          .header('Content-Type', contentType)
+          .header('Cache-Control', 'no-cache, no-store, must-revalidate')
+          .send(Buffer.from(buffer));
+      } catch (err: any) {
+        return reply.code(502).send({ error: err?.message || 'Failed to fetch camera snapshot' });
+      }
+    }
+  );
+
+  // GET /api/homeassistant/camera/stream/:entityId
+  fastify.get<{ Params: { entityId: string } }>(
+    '/api/homeassistant/camera/stream/:entityId',
+    async (request, reply) => {
+      const { entityId } = request.params;
+      const baseUrl = (config.HOMEASSISTANT_BASE_URL || '').replace(/\/+$/, '');
+      const token = (config.HOMEASSISTANT_AUTH_TOKEN || '').trim();
+
+      if (!baseUrl) {
+        return reply.code(502).send({ error: 'Home Assistant base URL not configured' });
+      }
+
+      try {
+        const controller = new AbortController();
+        request.raw.on('close', () => {
+          controller.abort();
+        });
+
+        const response = await fetch(`${baseUrl}/api/camera_proxy_stream/${encodeURIComponent(entityId)}`, {
+          headers: token ? { Authorization: `Bearer ${token}` } : {},
+          signal: controller.signal,
+        });
+
+        if (!response.ok || !response.body) {
+          return reply.code(response.status).send({ error: `HA stream returned ${response.status}` });
+        }
+
+        const contentType = response.headers.get('content-type') || 'multipart/x-mixed-replace; boundary=ffmpeg';
+        reply.raw.writeHead(200, {
+          'Content-Type': contentType,
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Connection': 'close',
+          'Pragma': 'no-cache',
+        });
+
+        const reader = response.body.getReader();
+        const pump = async () => {
+          try {
+            while (!request.raw.destroyed) {
+              const { done, value } = await reader.read();
+              if (done) break;
+              if (value) {
+                reply.raw.write(Buffer.from(value));
+              }
+            }
+          } catch {
+            // Client closed connection or aborted
+          } finally {
+            reply.raw.end();
+            reader.cancel().catch(() => {});
+          }
+        };
+
+        pump();
+        return reply;
+      } catch (err: any) {
+        return reply.code(502).send({ error: err?.message || 'Failed to connect camera stream' });
+      }
+    }
+  );
 };

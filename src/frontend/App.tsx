@@ -249,21 +249,46 @@ export const App: React.FC = () => {
   // Identify all climate units
   const climateEntities = entities.filter((e) => e.entity_id.startsWith('climate.'));
 
-  // Separate sub-switches belonging to AC units so they don't clutter the main grid
+  // Separate sub-switches belonging strictly to each specific AC unit
   const getSubSwitchesForClimate = (climate: HAEntityState) => {
-    const climateId = climate.entity_id.replace('climate.', '').toLowerCase();
-    const prefix = climateId.split('_')[0]; // e.g. 'master', 'kuya', 'girls', 'living'
+    const climateId = climate.entity_id.toLowerCase();
+    // Specific unit identifiers:
+    let unitKey = '';
+    if (climateId.includes('master_s_bedroom') || climateId.includes('czeozcvgaae')) {
+      unitKey = 'czeozcvgaae';
+    } else if (climateId.includes('kuya') || climateId.includes('cmskusvgaae')) {
+      unitKey = 'cmskusvgaae';
+    } else if (climateId.includes('girls') || climateId.includes('cmsi9yvgaai')) {
+      unitKey = 'cmsi9yvgaai';
+    } else if (climateId.includes('living_room')) {
+      unitKey = 'living_room_aircon';
+    }
+
+    if (!unitKey) return [];
+
     return entities.filter((e) => {
       if (!e.entity_id.startsWith('switch.')) return false;
       const swId = e.entity_id.toLowerCase();
-      return swId.includes(prefix) || swId.includes('aircon') || swId.includes('ac_');
+      // Must belong to this exact unit
+      if (!swId.includes(unitKey)) return false;
+      // Filter out redundant "power_switch" since the main AC card has a power toggle
+      if (swId.includes('power_switch')) return false;
+      // Filter out unavailable switches
+      if (e.state === 'unavailable' || e.state === 'unknown') return false;
+      return true;
     });
   };
 
   const isAirconSubSwitch = (entityId: string) => {
     if (!entityId.startsWith('switch.')) return false;
     const lower = entityId.toLowerCase();
-    return lower.includes('aircon') || lower.includes('_ac_') || lower.includes('air_conditioner');
+    return (
+      lower.includes('czeozcvgaae') ||
+      lower.includes('cmskusvgaae') ||
+      lower.includes('cmsi9yvgaai') ||
+      lower.includes('living_room_aircon') ||
+      lower.includes('air_conditioner')
+    );
   };
 
   // Filtered entities for Home tab:

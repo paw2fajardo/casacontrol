@@ -157,10 +157,10 @@ export const ClimateUnitCard: React.FC<ClimateUnitProps> = ({
               {subSwitches.map((sw) => {
                 const swIsOn = sw.state === 'on';
                 const label = sw.attributes.friendly_name
-                  ?.replace(/Master's Bedroom AC/i, '')
-                  ?.replace(/Kuya's AC/i, '')
-                  ?.replace(/Girls Ac/i, '')
-                  ?.replace(/\(.*?\) /i, '')
+                  ?.replace(/Master's Bedroom AC \([^)]+\)/i, '')
+                  ?.replace(/Kuya's AC \([^)]+\)/i, '')
+                  ?.replace(/Girls Ac \([^)]+\)/i, '')
+                  ?.replace(/Living room aircon/i, '')
                   ?.replace(/Switch/i, '')
                   ?.trim() || sw.entity_id;
 
@@ -168,15 +168,15 @@ export const ClimateUnitCard: React.FC<ClimateUnitProps> = ({
                   <button
                     key={sw.entity_id}
                     onClick={() => onAction(sw, 'switch', 'toggle')}
-                    className={`p-3 rounded-xl border text-left transition active:scale-95 cursor-pointer flex items-center justify-between ${
+                    className={`px-3 py-2.5 rounded-xl border text-left transition-all active:scale-95 cursor-pointer flex items-center justify-between ${
                       swIsOn
-                        ? 'bg-indigo-50/90 border-indigo-200 text-indigo-900 shadow-sm'
-                        : 'bg-white/80 border-slate-200/70 text-slate-600 hover:bg-white'
+                        ? 'bg-indigo-50/90 border-indigo-200 text-indigo-900 font-semibold shadow-xs'
+                        : 'bg-white/80 border-slate-200/80 text-slate-600 hover:bg-white'
                     }`}
                   >
-                    <span className="text-xs font-bold truncate pr-2">{label}</span>
-                    <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-full ${
-                      swIsOn ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-600'
+                    <span className="text-xs font-semibold truncate mr-2" title={label}>{label}</span>
+                    <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-md shrink-0 ${
+                      swIsOn ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-500'
                     }`}>
                       {sw.state}
                     </span>

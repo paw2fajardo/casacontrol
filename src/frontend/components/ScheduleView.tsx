@@ -21,16 +21,44 @@ interface ScheduleViewProps {
   schedule: ScheduleItem[];
   error: string | null;
   onRefresh?: () => void;
+  viewMode?: ViewMode;
+  filterType?: 'all' | 'calendar' | 'task';
+  onViewChange?: (viewMode: ViewMode, filterType: 'all' | 'calendar' | 'task') => void;
 }
 
 type ViewMode = 'timeline' | 'month' | 'agenda';
 
-export const ScheduleView: React.FC<ScheduleViewProps> = ({ schedule, error, onRefresh }) => {
+export const ScheduleView: React.FC<ScheduleViewProps> = ({
+  schedule,
+  error,
+  onRefresh,
+  viewMode: propViewMode,
+  filterType: propFilterType,
+  onViewChange,
+}) => {
   const [currentDate, setCurrentDate] = useState<Date>(new Date());
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
-  // Default to glanceable 3-Day Timeline for wall tablets
-  const [viewMode, setViewMode] = useState<ViewMode>('timeline');
-  const [filterType, setFilterType] = useState<'all' | 'calendar' | 'task'>('all');
+
+  // Support controlled or internal viewMode and filterType
+  const [internalViewMode, setInternalViewMode] = useState<ViewMode>('timeline');
+  const [internalFilterType, setInternalFilterType] = useState<'all' | 'calendar' | 'task'>('all');
+
+  const viewMode = propViewMode ?? internalViewMode;
+  const filterType = propFilterType ?? internalFilterType;
+
+  const handleViewModeChange = (mode: ViewMode) => {
+    if (propViewMode === undefined) {
+      setInternalViewMode(mode);
+    }
+    onViewChange?.(mode, filterType);
+  };
+
+  const handleFilterTypeChange = (type: 'all' | 'calendar' | 'task') => {
+    if (propFilterType === undefined) {
+      setInternalFilterType(type);
+    }
+    onViewChange?.(viewMode, type);
+  };
 
   // Local optimistic task completion state
   const [completedTaskIds, setCompletedTaskIds] = useState<Set<string>>(() => new Set());
@@ -228,7 +256,7 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({ schedule, error, onR
           {/* View Mode Toggle */}
           <div className="bg-white/80 border border-white/90 p-1.5 rounded-2xl shadow-xs flex items-center gap-1.5">
             <button
-              onClick={() => setViewMode('timeline')}
+              onClick={() => handleViewModeChange('timeline')}
               className={`h-12 px-4 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer ${
                 viewMode === 'timeline'
                   ? 'bg-slate-900 text-white shadow-xs'
@@ -239,7 +267,7 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({ schedule, error, onR
               <span>3-Day</span>
             </button>
             <button
-              onClick={() => setViewMode('month')}
+              onClick={() => handleViewModeChange('month')}
               className={`h-12 px-4 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer ${
                 viewMode === 'month'
                   ? 'bg-slate-900 text-white shadow-xs'
@@ -250,7 +278,7 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({ schedule, error, onR
               <span>Month</span>
             </button>
             <button
-              onClick={() => setViewMode('agenda')}
+              onClick={() => handleViewModeChange('agenda')}
               className={`h-12 px-4 rounded-xl text-xs font-bold transition flex items-center gap-2 cursor-pointer ${
                 viewMode === 'agenda'
                   ? 'bg-slate-900 text-white shadow-xs'
@@ -265,7 +293,7 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({ schedule, error, onR
           {/* Type Filter */}
           <div className="bg-white/80 border border-white/90 p-1.5 rounded-2xl shadow-xs flex items-center gap-1.5">
             <button
-              onClick={() => setFilterType('all')}
+              onClick={() => handleFilterTypeChange('all')}
               className={`h-12 px-4 rounded-xl text-xs font-bold transition cursor-pointer ${
                 filterType === 'all'
                   ? 'bg-slate-900 text-white shadow-xs'
@@ -275,7 +303,7 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({ schedule, error, onR
               All
             </button>
             <button
-              onClick={() => setFilterType('calendar')}
+              onClick={() => handleFilterTypeChange('calendar')}
               className={`h-12 px-4 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
                 filterType === 'calendar'
                   ? 'bg-indigo-600 text-white shadow-xs'
@@ -286,7 +314,7 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({ schedule, error, onR
               Events
             </button>
             <button
-              onClick={() => setFilterType('task')}
+              onClick={() => handleFilterTypeChange('task')}
               className={`h-12 px-4 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
                 filterType === 'task'
                   ? 'bg-amber-600 text-white shadow-xs'

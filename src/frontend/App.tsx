@@ -29,28 +29,96 @@ import {
 } from 'lucide-react';
 
 export const App: React.FC = () => {
-  // Sync tab with URL path (/home, /security, /schedule, /groceries)
-  const getTabFromPath = (): NavTab => {
-    const path = window.location.pathname.replace(/^\//, '').toLowerCase();
-    if (path === 'security') return 'security';
-    if (path === 'schedule') return 'schedule';
-    if (path === 'groceries') return 'groceries';
-    return 'home';
+  // Sync tab, schedule subpath, and filter parameters with URL
+  interface RouteState {
+    tab: NavTab;
+    scheduleViewMode?: 'timeline' | 'month' | 'agenda';
+    scheduleFilterType?: 'all' | 'calendar' | 'task';
+  }
+
+  const parseRoute = (): RouteState => {
+    const pathname = window.location.pathname.toLowerCase();
+    const searchParams = new URLSearchParams(window.location.search);
+    const viewParam = searchParams.get('view')?.toLowerCase();
+
+    // Map filter query parameter (?view=all | events/calendar | tasks/task)
+    let filterType: 'all' | 'calendar' | 'task' = 'all';
+    if (viewParam === 'calendar' || viewParam === 'events' || viewParam === 'event') {
+      filterType = 'calendar';
+    } else if (viewParam === 'task' || viewParam === 'tasks') {
+      filterType = 'task';
+    }
+
+    if (pathname.startsWith('/schedule')) {
+      let viewMode: 'timeline' | 'month' | 'agenda' = 'timeline';
+      if (pathname.includes('/month')) {
+        viewMode = 'month';
+      } else if (pathname.includes('/agenda')) {
+        viewMode = 'agenda';
+      } else if (pathname.includes('/3day') || pathname.includes('/timeline')) {
+        viewMode = 'timeline';
+      }
+
+      return {
+        tab: 'schedule',
+        scheduleViewMode: viewMode,
+        scheduleFilterType: filterType,
+      };
+    }
+
+    if (pathname.startsWith('/security')) return { tab: 'security' };
+    if (pathname.startsWith('/groceries')) return { tab: 'groceries' };
+    return { tab: 'home' };
   };
 
-  const [currentTab, setCurrentTab] = useState<NavTab>(getTabFromPath);
+  const initialRoute = parseRoute();
+  const [currentTab, setCurrentTab] = useState<NavTab>(initialRoute.tab);
+  const [scheduleViewMode, setScheduleViewMode] = useState<'timeline' | 'month' | 'agenda'>(
+    initialRoute.scheduleViewMode || 'timeline'
+  );
+  const [scheduleFilterType, setScheduleFilterType] = useState<'all' | 'calendar' | 'task'>(
+    initialRoute.scheduleFilterType || 'all'
+  );
 
   const handleSelectTab = (tab: NavTab) => {
     setCurrentTab(tab);
-    const targetPath = `/${tab}`;
-    if (window.location.pathname !== targetPath) {
-      window.history.pushState(null, '', targetPath);
+    if (tab === 'schedule') {
+      const subpath = scheduleViewMode === 'timeline' ? '3day' : scheduleViewMode;
+      const targetPath = `/schedule/${subpath}?view=${scheduleFilterType}`;
+      if (window.location.pathname + window.location.search !== targetPath) {
+        window.history.pushState(null, '', targetPath);
+      }
+    } else {
+      const targetPath = `/${tab}`;
+      if (window.location.pathname !== targetPath) {
+        window.history.pushState(null, '', targetPath);
+      }
+    }
+  };
+
+  const handleScheduleRouteStateChange = (
+    newViewMode: 'timeline' | 'month' | 'agenda',
+    newFilterType: 'all' | 'calendar' | 'task'
+  ) => {
+    setScheduleViewMode(newViewMode);
+    setScheduleFilterType(newFilterType);
+    const subpath = newViewMode === 'timeline' ? '3day' : newViewMode;
+    const targetUrl = `/schedule/${subpath}?view=${newFilterType}`;
+    if (window.location.pathname + window.location.search !== targetUrl) {
+      window.history.pushState(null, '', targetUrl);
     }
   };
 
   useEffect(() => {
     const handlePopState = () => {
-      setCurrentTab(getTabFromPath());
+      const route = parseRoute();
+      setCurrentTab(route.tab);
+      if (route.scheduleViewMode) {
+        setScheduleViewMode(route.scheduleViewMode);
+      }
+      if (route.scheduleFilterType) {
+        setScheduleFilterType(route.scheduleFilterType);
+      }
     };
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
@@ -849,6 +917,9 @@ export const App: React.FC = () => {
               schedule={schedule}
               error={scheduleError}
               onRefresh={fetchSchedule}
+              viewMode={scheduleViewMode}
+              filterType={scheduleFilterType}
+              onViewChange={handleScheduleRouteStateChange}
             />
           )}
 

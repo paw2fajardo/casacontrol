@@ -8,6 +8,7 @@ interface SidebarProps {
   onSelectTab: (tab: NavTab) => void;
   groceryCount: number;
   upcomingCount: number;
+  showSecurityTab?: boolean;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -15,13 +16,19 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onSelectTab,
   groceryCount,
   upcomingCount,
+  showSecurityTab = false,
 }) => {
-  const navItems = [
+  const allNavItems = [
     { id: 'home', label: 'Home', icon: Home },
     { id: 'security', label: 'Security', icon: Shield },
     { id: 'schedule', label: 'Schedule', icon: Calendar, badge: upcomingCount },
     { id: 'groceries', label: 'Groceries', icon: ShoppingCart, badge: groceryCount },
   ];
+
+  const navItems = allNavItems.filter((item) => {
+    if (item.id === 'security') return showSecurityTab;
+    return true;
+  });
 
   return (
     <aside className="w-24 bg-white/70 backdrop-blur-2xl border-r border-white/80 flex flex-col items-center py-6 justify-between select-none shrink-0 z-20 shadow-[4px_0_24px_rgba(148,163,184,0.06)]">

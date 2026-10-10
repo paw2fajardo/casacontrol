@@ -494,6 +494,15 @@ export const App: React.FC = () => {
     isHighImpact(e.entity_id, e.attributes.device_class)
   );
 
+  const hasSecurityDevices = securityEntities.length > 0;
+
+  // Auto-redirect to home if currently on security tab but no security devices exist
+  useEffect(() => {
+    if (currentTab === 'security' && !hasSecurityDevices && entities.length > 0) {
+      handleSelectTab('home');
+    }
+  }, [currentTab, hasSecurityDevices, entities.length]);
+
   return (
     <div className="flex h-screen w-screen overflow-hidden text-slate-800">
       {/* Persistent Left Sidebar */}
@@ -502,6 +511,7 @@ export const App: React.FC = () => {
         onSelectTab={handleSelectTab}
         groceryCount={groceries.length}
         upcomingCount={schedule.length}
+        showSecurityTab={hasSecurityDevices}
       />
 
       {/* Main View Area */}

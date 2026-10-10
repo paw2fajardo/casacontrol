@@ -4,6 +4,7 @@ import { Header } from './components/Header';
 import { EntityCard } from './components/EntityCard';
 import { ClimateUnitCard } from './components/ClimateUnitCard';
 import { ConfirmationModal } from './components/ConfirmationModal';
+import { GroceryView } from './components/GroceryView';
 import { HAEntityState, ScheduleItem, GroceryItem } from './types';
 import { 
   Calendar as CalendarIcon, 
@@ -282,7 +283,7 @@ export const App: React.FC = () => {
   );
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-[#0a0d14] text-slate-100">
+    <div className="flex h-screen w-screen overflow-hidden text-slate-800">
       {/* Persistent Left Sidebar */}
       <Sidebar
         currentTab={currentTab}
@@ -310,10 +311,10 @@ export const App: React.FC = () => {
                     <button
                       key={dom}
                       onClick={() => setSelectedDomain(dom)}
-                      className={`h-12 px-6 rounded-2xl text-xs font-bold uppercase tracking-wider transition-all duration-200 cursor-pointer active:scale-95 ${
+                      className={`h-12 px-6 rounded-2xl text-xs font-bold uppercase tracking-wider transition-all duration-300 cursor-pointer active:scale-95 shadow-sm border ${
                         selectedDomain === dom
-                          ? 'bg-amber-500 text-slate-950 shadow-lg shadow-amber-500/25 scale-102'
-                          : 'bg-[#141824] hover:bg-[#1a2030] text-slate-300 border border-slate-800'
+                          ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white border-transparent shadow-indigo-500/25 scale-102 font-extrabold'
+                          : 'bg-white/80 hover:bg-white text-slate-600 border-white/90'
                       }`}
                     >
                       {dom}
@@ -324,10 +325,10 @@ export const App: React.FC = () => {
                 <div className="flex items-center gap-3">
                   <button
                     onClick={() => setShowUnavailable(!showUnavailable)}
-                    className={`h-12 px-4 rounded-2xl text-xs font-bold transition flex items-center gap-2 cursor-pointer border ${
+                    className={`h-12 px-4 rounded-2xl text-xs font-bold transition flex items-center gap-2 cursor-pointer shadow-sm border ${
                       showUnavailable
-                        ? 'bg-slate-700 text-white border-slate-600'
-                        : 'bg-[#141824] text-slate-400 hover:text-slate-200 border-slate-800'
+                        ? 'bg-indigo-50 text-indigo-700 border-indigo-200'
+                        : 'bg-white/80 text-slate-500 hover:text-slate-800 border-white/90'
                     }`}
                   >
                     <span>{showUnavailable ? 'Showing All' : 'Hiding Inactive'}</span>
@@ -335,10 +336,10 @@ export const App: React.FC = () => {
 
                   <button
                     onClick={() => setIsManageMode(!isManageMode)}
-                    className={`h-12 px-5 rounded-2xl text-xs font-bold transition flex items-center gap-2 cursor-pointer border ${
+                    className={`h-12 px-5 rounded-2xl text-xs font-bold transition flex items-center gap-2 cursor-pointer shadow-sm border ${
                       isManageMode
-                        ? 'bg-amber-500 text-slate-950 font-black border-amber-400 shadow-lg shadow-amber-500/20'
-                        : 'bg-[#141824] hover:bg-[#1a2030] text-slate-300 border-slate-800'
+                        ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white font-black border-transparent shadow-amber-500/25'
+                        : 'bg-white/80 hover:bg-white text-slate-700 border-white/90'
                     }`}
                   >
                     <span>{isManageMode ? 'Done Editing' : 'Customize Cards'}</span>
@@ -347,9 +348,9 @@ export const App: React.FC = () => {
               </div>
 
               {isManageMode && (
-                <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs font-semibold flex items-center justify-between">
+                <div className="p-4 rounded-2xl bg-amber-50/90 border border-amber-200/80 text-amber-900 text-xs font-semibold flex items-center justify-between shadow-xs">
                   <span>Tap any card below to hide or unhide it from this tablet's main dashboard.</span>
-                  <span className="font-mono">{hiddenEntities.length} hidden</span>
+                  <span className="font-mono font-bold text-amber-700">{hiddenEntities.length} hidden</span>
                 </div>
               )}
 
@@ -439,11 +440,13 @@ export const App: React.FC = () => {
           {currentTab === 'security' && (
             <div className="space-y-6 max-w-5xl mx-auto">
               <div>
-                <h2 className="text-2xl font-black tracking-tight text-white flex items-center gap-3">
-                  <ShieldCheck className="w-8 h-8 text-emerald-400" />
+                <h2 className="text-3xl font-extrabold tracking-tight text-slate-800 flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-emerald-500 to-teal-500 flex items-center justify-center text-white shadow-md shadow-emerald-500/20">
+                    <ShieldCheck className="w-5 h-5" />
+                  </div>
                   Security & Perimeter Center
                 </h2>
-                <p className="text-xs text-slate-400 mt-1">
+                <p className="text-xs font-semibold text-slate-400 mt-1">
                   Protected high-impact home controls. Action confirmation is required on physical toggles.
                 </p>
               </div>
@@ -459,9 +462,9 @@ export const App: React.FC = () => {
                 ))}
 
                 {securityEntities.length === 0 && (
-                  <div className="col-span-full h-64 flex flex-col items-center justify-center border border-slate-800 rounded-3xl bg-[#141824] p-8 text-center">
-                    <ShieldCheck className="w-12 h-12 text-emerald-400 mb-3" />
-                    <h3 className="text-lg font-bold text-white">All Perimeters Normal</h3>
+                  <div className="col-span-full h-72 flex flex-col items-center justify-center rounded-3xl glass-panel p-8 text-center">
+                    <ShieldCheck className="w-14 h-14 text-emerald-500 mb-3 opacity-70" />
+                    <h3 className="text-xl font-extrabold text-slate-800">All Perimeters Normal</h3>
                     <p className="text-xs text-slate-400 mt-1 max-w-md">
                       No security doors or alarm entities require attention or manual confirmation.
                     </p>
@@ -476,39 +479,41 @@ export const App: React.FC = () => {
             <div className="space-y-6 max-w-5xl mx-auto">
               <div className="flex items-center justify-between">
                 <div>
-                  <h2 className="text-2xl font-black tracking-tight text-white flex items-center gap-3">
-                    <CalendarIcon className="w-8 h-8 text-amber-400" />
+                  <h2 className="text-3xl font-extrabold tracking-tight text-slate-800 flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center text-white shadow-md shadow-indigo-500/20">
+                      <CalendarIcon className="w-5 h-5" />
+                    </div>
                     Today's Schedule & Family Tasks
                   </h2>
-                  <p className="text-xs text-slate-400 mt-1">
+                  <p className="text-xs font-semibold text-slate-400 mt-1">
                     Unified calendar and tasks from the shared household Google account.
                   </p>
                 </div>
               </div>
 
               {scheduleError && (
-                <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-300 flex items-center gap-3">
-                  <AlertCircle className="w-5 h-5 shrink-0" />
+                <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-amber-800 flex items-center gap-3">
+                  <AlertCircle className="w-5 h-5 shrink-0 text-amber-500" />
                   <span className="text-sm font-semibold">{scheduleError}</span>
                 </div>
               )}
 
-              <div className="space-y-4">
+              <div className="space-y-3.5">
                 {schedule.map((item) => (
                   <div
                     key={item.id}
-                    className="p-5 rounded-3xl bg-[#141824] border border-slate-800/80 flex items-center justify-between hover:border-slate-700 transition"
+                    className="glass-card p-5 rounded-2xl flex items-center justify-between group"
                   >
                     <div className="flex items-center gap-4">
-                      <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${
-                        item.type === 'calendar' ? 'bg-blue-500/15 text-blue-400' : 'bg-amber-500/15 text-amber-400'
+                      <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shadow-xs ${
+                        item.type === 'calendar' ? 'bg-indigo-50 text-indigo-600' : 'bg-amber-50 text-amber-600'
                       }`}>
                         {item.type === 'calendar' ? <CalendarIcon className="w-6 h-6" /> : <CheckSquare className="w-6 h-6" />}
                       </div>
                       <div>
-                        <h4 className="text-lg font-bold text-white tracking-tight">{item.title}</h4>
-                        <div className="text-xs text-slate-400 flex items-center gap-3 mt-1">
-                          <span className="capitalize font-semibold">{item.type}</span>
+                        <h4 className="text-base font-extrabold text-slate-800 tracking-tight">{item.title}</h4>
+                        <div className="text-xs font-semibold text-slate-400 flex items-center gap-3 mt-1">
+                          <span className="capitalize text-indigo-600 font-bold">{item.type}</span>
                           {item.listName && <span>• {item.listName}</span>}
                           {item.startTime && <span>• {new Date(item.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>}
                           {item.dueDate && <span>• Due {new Date(item.dueDate).toLocaleDateString()}</span>}
@@ -516,16 +521,16 @@ export const App: React.FC = () => {
                       </div>
                     </div>
 
-                    <span className="px-3 py-1.5 rounded-xl bg-slate-800 text-[11px] font-bold text-slate-300 uppercase tracking-wider">
+                    <span className="px-3.5 py-1 rounded-full bg-slate-100 text-[11px] font-black text-slate-600 uppercase tracking-wider">
                       {item.isAllDay ? 'All Day' : 'Scheduled'}
                     </span>
                   </div>
                 ))}
 
                 {schedule.length === 0 && !scheduleError && (
-                  <div className="h-64 flex flex-col items-center justify-center border border-slate-800 rounded-3xl bg-[#141824] text-slate-400">
-                    <CheckCircle2 className="w-10 h-10 text-emerald-400 mb-2" />
-                    <p className="text-base font-bold text-white">All Clear for Today</p>
+                  <div className="h-72 flex flex-col items-center justify-center rounded-3xl glass-panel text-slate-500">
+                    <CheckCircle2 className="w-12 h-12 text-emerald-500 mb-2 opacity-60" />
+                    <p className="text-lg font-extrabold text-slate-800">All Clear for Today</p>
                     <p className="text-xs text-slate-400 mt-1">No pending calendar events or active reminders.</p>
                   </div>
                 )}
@@ -535,66 +540,7 @@ export const App: React.FC = () => {
 
           {/* TAB 4: GROCERY LIST */}
           {currentTab === 'groceries' && (
-            <div className="space-y-6 max-w-5xl mx-auto">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="text-2xl font-black tracking-tight text-white flex items-center gap-3">
-                    <ShoppingCart className="w-8 h-8 text-amber-400" />
-                    CartSync Grocery List
-                  </h2>
-                  <p className="text-xs text-slate-400 mt-1">
-                    Live household items synced with CartSync (Read-only on dashboard).
-                  </p>
-                </div>
-                <div className="px-4 py-2 rounded-2xl bg-amber-500/15 border border-amber-500/30 text-amber-300 text-xs font-bold">
-                  {groceries.length} {groceries.length === 1 ? 'Item' : 'Items'} Needed
-                </div>
-              </div>
-
-              {groceriesError && (
-                <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-300 flex items-center gap-3">
-                  <AlertCircle className="w-5 h-5 shrink-0" />
-                  <span className="text-sm font-semibold">{groceriesError}</span>
-                </div>
-              )}
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {groceries.map((item) => (
-                  <div
-                    key={item.id}
-                    className="p-5 rounded-3xl bg-[#141824] border border-slate-800/80 flex items-center justify-between hover:border-slate-700 transition"
-                  >
-                    <div className="flex items-center gap-4">
-                      <div className="w-7 h-7 rounded-lg border-2 border-slate-600 flex items-center justify-center text-transparent">
-                        ✓
-                      </div>
-                      <div>
-                        <h4 className="text-base font-bold text-white tracking-tight">{item.name}</h4>
-                        {item.category && (
-                          <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
-                            {item.category}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-
-                    {item.quantity && (
-                      <span className="px-3.5 py-1 rounded-xl bg-slate-800 font-mono font-bold text-sm text-amber-300">
-                        {item.quantity} {item.unit || ''}
-                      </span>
-                    )}
-                  </div>
-                ))}
-
-                {groceries.length === 0 && !groceriesError && (
-                  <div className="col-span-full h-64 flex flex-col items-center justify-center border border-slate-800 rounded-3xl bg-[#141824] text-slate-400">
-                    <ShoppingCart className="w-10 h-10 text-emerald-400 mb-2 opacity-50" />
-                    <p className="text-base font-bold text-white">Pantry is Stocked</p>
-                    <p className="text-xs text-slate-400 mt-1">No items currently on the household grocery list.</p>
-                  </div>
-                )}
-              </div>
-            </div>
+            <GroceryView groceries={groceries} error={groceriesError} />
           )}
         </main>
       </div>

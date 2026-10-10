@@ -1,3 +1,8 @@
+import dotenv from 'dotenv';
+
+// Automatically load .env if present
+dotenv.config();
+
 export interface AppConfig {
   PORT: number;
   HOST: string;

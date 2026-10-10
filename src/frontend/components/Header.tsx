@@ -1,16 +1,24 @@
 import React, { useState, useEffect } from 'react';
 import { RefreshCw, Sparkles } from 'lucide-react';
 
+import { UserProfile } from '../types';
+
 interface HeaderProps {
   onManualRefresh: () => void;
   isRefreshing: boolean;
   activeCount: number;
+  currentUser: UserProfile | null;
+  onSwitchProfile: () => void;
+  onOpenUserManager?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
   onManualRefresh,
   isRefreshing,
   activeCount,
+  currentUser,
+  onSwitchProfile,
+  onOpenUserManager,
 }) => {
   const [time, setTime] = useState<string>('');
   const [date, setDate] = useState<string>('');
@@ -51,11 +59,48 @@ export const Header: React.FC<HeaderProps> = ({
         </div>
       </div>
 
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-3">
+        {/* Active Profile Pill / Switcher */}
+        {currentUser && (
+          <div className="flex items-center gap-1.5">
+            <button
+              onClick={onSwitchProfile}
+              className="h-11 px-3.5 rounded-xl bg-white/90 hover:bg-white active:scale-95 border border-slate-200/80 shadow-xs flex items-center gap-2.5 cursor-pointer transition"
+            >
+              <div className={`w-7 h-7 rounded-lg flex items-center justify-center text-xs font-black ${
+                currentUser.role === 'admin'
+                  ? 'bg-amber-100 text-amber-800'
+                  : 'bg-indigo-100 text-indigo-700'
+              }`}>
+                {currentUser.name.charAt(0).toUpperCase()}
+              </div>
+              <div className="text-left">
+                <div className="text-xs font-extrabold text-slate-800 leading-tight flex items-center gap-1">
+                  <span>{currentUser.name}</span>
+                  {currentUser.role === 'admin' && (
+                    <span className="text-[9px] font-black uppercase px-1.5 py-0.2 bg-amber-100 text-amber-800 rounded">Admin</span>
+                  )}
+                </div>
+                <div className="text-[10px] text-slate-400 font-semibold">Switch User</div>
+              </div>
+            </button>
+
+            {currentUser.role === 'admin' && onOpenUserManager && (
+              <button
+                onClick={onOpenUserManager}
+                title="Manage Users & Permissions"
+                className="h-11 px-3 rounded-xl bg-indigo-50/80 hover:bg-indigo-100 border border-indigo-200 text-indigo-700 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer"
+              >
+                <span>Users ⚙</span>
+              </button>
+            )}
+          </div>
+        )}
+
         <button
           onClick={onManualRefresh}
           disabled={isRefreshing}
-          className="h-11 px-4 rounded-xl bg-white/80 hover:bg-white active:scale-95 border border-slate-200/80 shadow-sm flex items-center gap-2 text-xs font-bold text-slate-600 hover:text-slate-900 transition cursor-pointer disabled:opacity-50"
+          className="h-11 px-3.5 rounded-xl bg-white/80 hover:bg-white active:scale-95 border border-slate-200/80 shadow-sm flex items-center gap-2 text-xs font-bold text-slate-600 hover:text-slate-900 transition cursor-pointer disabled:opacity-50"
         >
           <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin text-indigo-600' : ''}`} />
           <span>Refresh</span>

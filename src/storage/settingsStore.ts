@@ -8,13 +8,45 @@ export interface DeviceGroup {
   entityIds: string[];
 }
 
+export interface UserProfile {
+  id: string;
+  name: string;
+  role: 'admin' | 'user';
+  pin: string; // 4-digit PIN code
+  allowedGroupIds: string[]; // empty means all if admin, or specific group IDs if user
+}
+
 export interface HouseholdSettings {
   deviceGroups: DeviceGroup[];
   customNames: Record<string, string>;
   hiddenEntities: string[];
+  users: UserProfile[];
 }
 
 const DEFAULT_SETTINGS: HouseholdSettings = {
+  users: [
+    {
+      id: 'user_admin',
+      name: 'Admin',
+      role: 'admin',
+      pin: '1234',
+      allowedGroupIds: [],
+    },
+    {
+      id: 'user_kuya',
+      name: "Kuya's Tablet",
+      role: 'user',
+      pin: '',
+      allowedGroupIds: ['group_kuyas_room'],
+    },
+    {
+      id: 'user_girls',
+      name: "Girls' Tablet",
+      role: 'user',
+      pin: '',
+      allowedGroupIds: ['group_girls_room'],
+    },
+  ],
   deviceGroups: [
     {
       id: 'group_master_bedroom',
@@ -70,6 +102,7 @@ export class SettingsStore {
       const data = await fs.readFile(this.filePath, 'utf-8');
       const parsed = JSON.parse(data);
       this.cache = {
+        users: Array.isArray(parsed.users) ? parsed.users : DEFAULT_SETTINGS.users,
         deviceGroups: Array.isArray(parsed.deviceGroups) ? parsed.deviceGroups : DEFAULT_SETTINGS.deviceGroups,
         customNames: parsed.customNames && typeof parsed.customNames === 'object' ? parsed.customNames : {},
         hiddenEntities: Array.isArray(parsed.hiddenEntities) ? parsed.hiddenEntities : [],
@@ -86,6 +119,7 @@ export class SettingsStore {
   public async saveSettings(newSettings: Partial<HouseholdSettings>): Promise<HouseholdSettings> {
     const current = await this.getSettings();
     const merged: HouseholdSettings = {
+      users: newSettings.users !== undefined ? newSettings.users : current.users,
       deviceGroups: newSettings.deviceGroups !== undefined ? newSettings.deviceGroups : current.deviceGroups,
       customNames: newSettings.customNames !== undefined ? newSettings.customNames : current.customNames,
       hiddenEntities: newSettings.hiddenEntities !== undefined ? newSettings.hiddenEntities : current.hiddenEntities,

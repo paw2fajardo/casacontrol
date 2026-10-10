@@ -6,8 +6,10 @@ import { ClimateUnitCard } from './components/ClimateUnitCard';
 import { ConfirmationModal } from './components/ConfirmationModal';
 import { RenameModal } from './components/RenameModal';
 import { GroupModal } from './components/GroupModal';
+import { ProfileLoginModal } from './components/ProfileLoginModal';
+import { UserManagementModal } from './components/UserManagementModal';
 import { GroceryView } from './components/GroceryView';
-import { HAEntityState, ScheduleItem, GroceryItem, DeviceGroup } from './types';
+import { HAEntityState, ScheduleItem, GroceryItem, DeviceGroup, UserProfile } from './types';
 import { 
   Calendar as CalendarIcon, 
   CheckSquare, 
@@ -124,6 +126,38 @@ export const App: React.FC = () => {
     }
   };
 
+  // User authentication and profile state
+  const [currentUser, setCurrentUser] = useState<UserProfile | null>(() => {
+    try {
+      const stored = localStorage.getItem('casacontrol_current_user');
+      return stored ? JSON.parse(stored) : null;
+    } catch {
+      return null;
+    }
+  });
+  const [users, setUsers] = useState<UserProfile[]>([]);
+  const [isLoginModalOpen, setIsLoginModalOpen] = useState<boolean>(false);
+  const [isUserManagerOpen, setIsUserManagerOpen] = useState<boolean>(false);
+
+  // Fetch available user profiles
+  const fetchUsers = async () => {
+    try {
+      const res = await fetch('/api/users');
+      const data = await res.json();
+      if (data.success && Array.isArray(data.users)) {
+        setUsers(data.users);
+        // If current user is already set, keep their data refreshed
+        setCurrentUser((curr) => {
+          if (!curr) return null;
+          const fresh = data.users.find((u: UserProfile) => u.id === curr.id);
+          return fresh ? { ...curr, ...fresh } : curr;
+        });
+      }
+    } catch (err) {
+      console.warn('Failed to fetch user profiles:', err);
+    }
+  };
+
   // Fetch household settings (custom groups, names, hidden entities)
   const fetchSettings = async () => {
     try {
@@ -147,7 +181,7 @@ export const App: React.FC = () => {
 
   const handleRefreshAll = async () => {
     setIsRefreshing(true);
-    await Promise.all([fetchEntities(), fetchSchedule(), fetchGroceries(), fetchSettings()]);
+    await Promise.all([fetchEntities(), fetchSchedule(), fetchGroceries(), fetchSettings(), fetchUsers()]);
     setIsRefreshing(false);
   };
 
@@ -159,6 +193,7 @@ export const App: React.FC = () => {
       fetchSchedule();
       fetchGroceries();
       fetchSettings();
+      fetchUsers();
     }, 30000);
 
     return () => {
@@ -435,11 +470,31 @@ export const App: React.FC = () => {
     );
   };
 
-  // Active selected room group
-  const activeGroup = selectedGroupId !== 'all' ? deviceGroups.find((g) => g.id === selectedGroupId) : null;
+  // User profile scoping: Non-admin users only see their allowed groups
+  const visibleGroups = currentUser?.role === 'admin'
+    ? deviceGroups
+    : deviceGroups.filter((g) => currentUser?.allowedGroupIds?.includes(g.id));
 
-  // Filtered climate entities
+  // Auto-select first allowed room if user has restricted access and current selection is invalid
+  useEffect(() => {
+    if (currentUser?.role === 'user') {
+      const allowed = currentUser.allowedGroupIds || [];
+      if (allowed.length > 0 && (selectedGroupId === 'all' || !allowed.includes(selectedGroupId))) {
+        setSelectedGroupId(allowed[0]);
+      }
+    }
+  }, [currentUser, selectedGroupId]);
+
+  // Active selected room group
+  const activeGroup = selectedGroupId !== 'all' ? visibleGroups.find((g) => g.id === selectedGroupId) : null;
+
+  // Filtered climate entities (scoped to user's assigned rooms if non-admin)
   const displayClimateEntities = climateEntities.filter((c) => {
+    if (currentUser?.role === 'user') {
+      // Must belong to one of the user's allowed rooms
+      const isAllowedForUser = visibleGroups.some((g) => g.entityIds.includes(c.entity_id));
+      if (!isAllowedForUser) return false;
+    }
     if (activeGroup && !activeGroup.entityIds.includes(c.entity_id)) {
       return false;
     }
@@ -456,6 +511,11 @@ export const App: React.FC = () => {
     const [domain] = e.entity_id.split('.');
 
     // Room / Area Group Filter
+    if (currentUser?.role === 'user') {
+      // Must belong to one of user's allowed rooms
+      const isAllowedForUser = visibleGroups.some((g) => g.entityIds.includes(e.entity_id));
+      if (!isAllowedForUser) return false;
+    }
     if (activeGroup && !activeGroup.entityIds.includes(e.entity_id)) {
       return false;
     }
@@ -520,6 +580,9 @@ export const App: React.FC = () => {
           onManualRefresh={handleRefreshAll}
           isRefreshing={isRefreshing}
           activeCount={activeDeviceCount}
+          currentUser={currentUser}
+          onSwitchProfile={() => setIsLoginModalOpen(true)}
+          onOpenUserManager={() => setIsUserManagerOpen(true)}
         />
 
         <main className="flex-1 overflow-y-auto p-4 sm:p-6 no-scrollbar">
@@ -533,18 +596,20 @@ export const App: React.FC = () => {
                     <Layers className="w-4 h-4 text-indigo-500" /> Rooms:
                   </span>
                   
-                  <button
-                    onClick={() => setSelectedGroupId('all')}
-                    className={`h-11 px-5 rounded-2xl text-xs font-bold transition-all duration-300 cursor-pointer active:scale-95 shadow-xs border shrink-0 ${
-                      selectedGroupId === 'all'
-                        ? 'bg-slate-900 text-white border-transparent font-black shadow-md'
-                        : 'bg-white/90 hover:bg-white text-slate-600 border-white/90'
-                    }`}
-                  >
-                    All Areas
-                  </button>
+                  {(!currentUser || currentUser.role === 'admin') && (
+                    <button
+                      onClick={() => setSelectedGroupId('all')}
+                      className={`h-11 px-5 rounded-2xl text-xs font-bold transition-all duration-300 cursor-pointer active:scale-95 shadow-xs border shrink-0 ${
+                        selectedGroupId === 'all'
+                          ? 'bg-slate-900 text-white border-transparent font-black shadow-md'
+                          : 'bg-white/90 hover:bg-white text-slate-600 border-white/90'
+                      }`}
+                    >
+                      All Areas
+                    </button>
+                  )}
 
-                  {deviceGroups.map((group) => (
+                  {visibleGroups.map((group) => (
                     <div key={group.id} className="relative shrink-0 flex items-center">
                       <button
                         onClick={() => setSelectedGroupId(group.id)}
@@ -562,8 +627,8 @@ export const App: React.FC = () => {
                         </span>
                       </button>
 
-                      {/* Room Edit Gear ONLY appears when user explicitly taps 'Customize & Rename' */}
-                      {isManageMode && (
+                      {/* Room Edit Gear ONLY appears when admin explicitly taps 'Customize & Rename' */}
+                      {isManageMode && currentUser?.role === 'admin' && (
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
@@ -579,8 +644,8 @@ export const App: React.FC = () => {
                     </div>
                   ))}
 
-                  {/* New Room button is also guarded in manage mode or clean secondary style */}
-                  {isManageMode && (
+                  {/* New Room button is guarded in manage mode for admins */}
+                  {isManageMode && currentUser?.role === 'admin' && (
                     <button
                       onClick={() => {
                         setGroupToEdit(null);
@@ -606,16 +671,19 @@ export const App: React.FC = () => {
                     <span>{showUnavailable ? 'Showing All' : 'Hiding Inactive'}</span>
                   </button>
 
-                  <button
-                    onClick={() => setIsManageMode(!isManageMode)}
-                    className={`h-11 px-4 rounded-2xl text-xs font-bold transition flex items-center gap-2 cursor-pointer shadow-xs border ${
-                      isManageMode
-                        ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white font-black border-transparent shadow-amber-500/25 ring-2 ring-amber-300'
-                        : 'bg-white/80 hover:bg-white text-slate-700 border-white/90'
-                    }`}
-                  >
-                    <span>{isManageMode ? 'Done Editing' : 'Customize & Rename'}</span>
-                  </button>
+                  {/* Only admins can toggle Manage / Rename mode */}
+                  {(!currentUser || currentUser.role === 'admin') && (
+                    <button
+                      onClick={() => setIsManageMode(!isManageMode)}
+                      className={`h-11 px-4 rounded-2xl text-xs font-bold transition flex items-center gap-2 cursor-pointer shadow-xs border ${
+                        isManageMode
+                          ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white font-black border-transparent shadow-amber-500/25 ring-2 ring-amber-300'
+                          : 'bg-white/80 hover:bg-white text-slate-700 border-white/90'
+                      }`}
+                    >
+                      <span>{isManageMode ? 'Done Editing' : 'Customize & Rename'}</span>
+                    </button>
+                  )}
                 </div>
               </div>
 
@@ -896,6 +964,46 @@ export const App: React.FC = () => {
           onClose={() => {
             setIsGroupModalOpen(false);
             setGroupToEdit(null);
+          }}
+        />
+      )}
+
+      {/* User Login & Profile Switcher Modal */}
+      <ProfileLoginModal
+        isOpen={isLoginModalOpen || !currentUser}
+        users={users}
+        canClose={!!currentUser}
+        onLoginSuccess={(user) => {
+          setCurrentUser(user);
+          try {
+            localStorage.setItem('casacontrol_current_user', JSON.stringify(user));
+          } catch {}
+          setIsLoginModalOpen(false);
+        }}
+        onClose={() => setIsLoginModalOpen(false)}
+      />
+
+      {/* Admin User & Room Management Modal */}
+      {isUserManagerOpen && (
+        <UserManagementModal
+          isOpen={isUserManagerOpen}
+          users={users}
+          deviceGroups={deviceGroups}
+          onClose={() => setIsUserManagerOpen(false)}
+          onSaveUsers={async (updatedUsers) => {
+            setUsers(updatedUsers);
+            await syncSettingsToServer({ users: updatedUsers } as any);
+            // Refresh current user if updated
+            if (currentUser) {
+              const fresh = updatedUsers.find((u) => u.id === currentUser.id);
+              if (fresh) {
+                const updatedCurrent = { ...currentUser, ...fresh };
+                setCurrentUser(updatedCurrent);
+                try {
+                  localStorage.setItem('casacontrol_current_user', JSON.stringify(updatedCurrent));
+                } catch {}
+              }
+            }
           }}
         />
       )}

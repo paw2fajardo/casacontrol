@@ -41,3 +41,12 @@ export interface DeviceGroup {
   entityIds: string[];
 }
 
+export interface UserProfile {
+  id: string;
+  name: string;
+  role: 'admin' | 'user';
+  pin?: string;
+  allowedGroupIds: string[];
+  hasPin?: boolean;
+}
+

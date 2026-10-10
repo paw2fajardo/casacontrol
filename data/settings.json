@@ -1,4 +1,31 @@
 {
+  "users": [
+    {
+      "id": "user_admin",
+      "name": "Admin",
+      "role": "admin",
+      "pin": "1234",
+      "allowedGroupIds": []
+    },
+    {
+      "id": "user_kuya",
+      "name": "Kuya's Tablet",
+      "role": "user",
+      "pin": "",
+      "allowedGroupIds": [
+        "group_kuyas_room"
+      ]
+    },
+    {
+      "id": "user_girls",
+      "name": "Girls' Tablet",
+      "role": "user",
+      "pin": "",
+      "allowedGroupIds": [
+        "group_girls_room"
+      ]
+    }
+  ],
   "deviceGroups": [
     {
       "id": "kitchen_zone",

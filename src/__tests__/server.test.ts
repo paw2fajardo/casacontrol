@@ -271,4 +271,53 @@ describe('Fastify Server Scaffold & Routes', () => {
 
     await server.close();
   });
+
+  it('GET /api/users returns safe profiles without exposing plain PINs', async () => {
+    const server = await buildServer();
+    const res = await server.inject({
+      method: 'GET',
+      url: '/api/users',
+    });
+
+    expect(res.statusCode).toBe(200);
+    const body = JSON.parse(res.body);
+    expect(body.success).toBe(true);
+    expect(Array.isArray(body.users)).toBe(true);
+
+    const admin = body.users.find((u: any) => u.id === 'user_admin');
+    expect(admin).toBeDefined();
+    expect(admin.role).toBe('admin');
+    expect(admin.hasPin).toBe(true);
+    expect(admin.pin).toBeUndefined(); // Plaintext PIN must never be exposed
+    await server.close();
+  });
+
+  it('POST /api/auth/login verifies valid PIN and rejects invalid PIN', async () => {
+    const server = await buildServer();
+
+    // 1. Invalid PIN
+    const failRes = await server.inject({
+      method: 'POST',
+      url: '/api/auth/login',
+      payload: { userId: 'user_admin', pin: '9999' },
+    });
+    expect(failRes.statusCode).toBe(401);
+    const failBody = JSON.parse(failRes.body);
+    expect(failBody.success).toBe(false);
+    expect(failBody.error).toBe('Incorrect PIN');
+
+    // 2. Correct PIN
+    const successRes = await server.inject({
+      method: 'POST',
+      url: '/api/auth/login',
+      payload: { userId: 'user_admin', pin: '1234' },
+    });
+    expect(successRes.statusCode).toBe(200);
+    const successBody = JSON.parse(successRes.body);
+    expect(successBody.success).toBe(true);
+    expect(successBody.user.id).toBe('user_admin');
+    expect(successBody.user.role).toBe('admin');
+    await server.close();
+  });
 });
+

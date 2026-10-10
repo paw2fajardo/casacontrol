@@ -1,0 +1,32 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    --app-bg: #0b0e14;
+    --card-bg: #141822;
+    --card-border: #232938;
+    --card-hover: #1b212f;
+  }
+}
+
+/* Custom subtle ambient glow */
+.glow-amber {
+  box-shadow: 0 0 25px -4px rgba(245, 158, 11, 0.28), 0 0 10px -2px rgba(245, 158, 11, 0.15);
+}
+
+.glow-emerald {
+  box-shadow: 0 0 25px -4px rgba(16, 185, 129, 0.28), 0 0 10px -2px rgba(16, 185, 129, 0.15);
+}
+
+.glow-blue {
+  box-shadow: 0 0 25px -4px rgba(59, 130, 246, 0.28), 0 0 10px -2px rgba(59, 130, 246, 0.15);
+}
+
+/* Hide scrollbar for clean tablet viewport */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}

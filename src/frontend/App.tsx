@@ -616,7 +616,7 @@ export const App: React.FC = () => {
                         onClick={() => setSelectedGroupId(group.id)}
                         className={`h-11 px-5 rounded-2xl text-xs font-bold transition-all duration-300 cursor-pointer active:scale-95 shadow-xs border ${
                           selectedGroupId === group.id
-                            ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white border-transparent shadow-indigo-500/25 font-black scale-102'
+                            ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm font-black scale-102'
                             : 'bg-white/90 hover:bg-white text-slate-700 border-white/90'
                         }`}
                       >

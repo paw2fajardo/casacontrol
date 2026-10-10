@@ -118,8 +118,25 @@ export class SettingsStore {
 
   public async saveSettings(newSettings: Partial<HouseholdSettings>): Promise<HouseholdSettings> {
     const current = await this.getSettings();
+
+    // When updating users, preserve existing PIN if not explicitly supplied
+    let mergedUsers = current.users;
+    if (newSettings.users !== undefined) {
+      mergedUsers = newSettings.users.map((incoming) => {
+        const existing = current.users.find((u) => u.id === incoming.id);
+        const pinToUse =
+          incoming.pin !== undefined && incoming.pin !== ''
+            ? incoming.pin
+            : existing?.pin || '';
+        return {
+          ...incoming,
+          pin: pinToUse,
+        };
+      });
+    }
+
     const merged: HouseholdSettings = {
-      users: newSettings.users !== undefined ? newSettings.users : current.users,
+      users: mergedUsers,
       deviceGroups: newSettings.deviceGroups !== undefined ? newSettings.deviceGroups : current.deviceGroups,
       customNames: newSettings.customNames !== undefined ? newSettings.customNames : current.customNames,
       hiddenEntities: newSettings.hiddenEntities !== undefined ? newSettings.hiddenEntities : current.hiddenEntities,

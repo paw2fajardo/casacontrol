@@ -8,21 +8,12 @@
       "allowedGroupIds": []
     },
     {
-      "id": "user_kuya",
-      "name": "Kuya's Tablet",
+      "id": "user_1791622658245",
+      "name": "Fajardo",
       "role": "user",
-      "pin": "",
+      "hasPin": true,
       "allowedGroupIds": [
-        "group_kuyas_room"
-      ]
-    },
-    {
-      "id": "user_girls",
-      "name": "Girls' Tablet",
-      "role": "user",
-      "pin": "",
-      "allowedGroupIds": [
-        "group_girls_room"
+        "kitchen_zone"
       ]
     }
   ],

@@ -545,7 +545,7 @@ export const App: React.FC = () => {
                   </button>
 
                   {deviceGroups.map((group) => (
-                    <div key={group.id} className="relative group/pill shrink-0 flex items-center">
+                    <div key={group.id} className="relative shrink-0 flex items-center">
                       <button
                         onClick={() => setSelectedGroupId(group.id)}
                         className={`h-11 px-5 rounded-2xl text-xs font-bold transition-all duration-300 cursor-pointer active:scale-95 shadow-xs border ${
@@ -562,30 +562,36 @@ export const App: React.FC = () => {
                         </span>
                       </button>
 
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setGroupToEdit(group);
-                          setIsGroupModalOpen(true);
-                        }}
-                        title={`Edit ${group.name}`}
-                        className="ml-1 w-8 h-8 rounded-xl bg-white/70 hover:bg-white text-slate-400 hover:text-indigo-600 flex items-center justify-center cursor-pointer transition shadow-xs border border-white/90"
-                      >
-                        <span className="text-xs font-bold">⚙</span>
-                      </button>
+                      {/* Room Edit Gear ONLY appears when user explicitly taps 'Customize & Rename' */}
+                      {isManageMode && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setGroupToEdit(group);
+                            setIsGroupModalOpen(true);
+                          }}
+                          title={`Edit ${group.name}`}
+                          className="ml-1 px-2.5 h-11 rounded-2xl bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-300 flex items-center gap-1 cursor-pointer transition shadow-xs"
+                        >
+                          <span className="text-[11px] font-bold">⚙ Edit</span>
+                        </button>
+                      )}
                     </div>
                   ))}
 
-                  <button
-                    onClick={() => {
-                      setGroupToEdit(null);
-                      setIsGroupModalOpen(true);
-                    }}
-                    className="h-11 px-4 rounded-2xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer bg-indigo-50/80 hover:bg-indigo-100 text-indigo-700 border border-indigo-200/80 shadow-xs shrink-0"
-                  >
-                    <Plus className="w-4 h-4" />
-                    <span>New Room</span>
-                  </button>
+                  {/* New Room button is also guarded in manage mode or clean secondary style */}
+                  {isManageMode && (
+                    <button
+                      onClick={() => {
+                        setGroupToEdit(null);
+                        setIsGroupModalOpen(true);
+                      }}
+                      className="h-11 px-4 rounded-2xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer bg-indigo-50/80 hover:bg-indigo-100 text-indigo-700 border border-indigo-200/80 shadow-xs shrink-0"
+                    >
+                      <Plus className="w-4 h-4" />
+                      <span>Add Room</span>
+                    </button>
+                  )}
                 </div>
 
                 <div className="flex items-center gap-2.5 shrink-0">

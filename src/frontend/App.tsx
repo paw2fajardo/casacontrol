@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Sidebar, NavTab } from './components/Sidebar';
 import { Header } from './components/Header';
 import { EntityCard } from './components/EntityCard';
+import { ClimateUnitCard } from './components/ClimateUnitCard';
 import { ConfirmationModal } from './components/ConfirmationModal';
 import { HAEntityState, ScheduleItem, GroceryItem } from './types';
 import { 
@@ -127,7 +128,8 @@ export const App: React.FC = () => {
     entity: HAEntityState,
     domain: string,
     service: string,
-    confirmed = false
+    confirmed = false,
+    serviceData?: Record<string, any>
   ) => {
     setLoadingEntityId(entity.entity_id);
     try {
@@ -138,6 +140,7 @@ export const App: React.FC = () => {
           entity_id: entity.entity_id,
           domain,
           service,
+          service_data: serviceData,
           confirmed,
         }),
       });
@@ -154,6 +157,15 @@ export const App: React.FC = () => {
     } finally {
       setLoadingEntityId(null);
     }
+  };
+
+  const executeServiceCallWithData = (
+    entity: HAEntityState,
+    domain: string,
+    service: string,
+    serviceData?: Record<string, any>
+  ) => {
+    executeServiceCall(entity, domain, service, false, serviceData);
   };
 
   const handleEntityAction = (entity: HAEntityState, domain: string, service: string) => {
@@ -207,20 +219,42 @@ export const App: React.FC = () => {
     });
   };
 
+  // Identify all climate units
+  const climateEntities = entities.filter((e) => e.entity_id.startsWith('climate.'));
+
+  // Separate sub-switches belonging to AC units so they don't clutter the main grid
+  const getSubSwitchesForClimate = (climate: HAEntityState) => {
+    const climateId = climate.entity_id.replace('climate.', '').toLowerCase();
+    const prefix = climateId.split('_')[0]; // e.g. 'master', 'kuya', 'girls', 'living'
+    return entities.filter((e) => {
+      if (!e.entity_id.startsWith('switch.')) return false;
+      const swId = e.entity_id.toLowerCase();
+      return swId.includes(prefix) || swId.includes('aircon') || swId.includes('ac_');
+    });
+  };
+
+  const isAirconSubSwitch = (entityId: string) => {
+    if (!entityId.startsWith('switch.')) return false;
+    const lower = entityId.toLowerCase();
+    return lower.includes('aircon') || lower.includes('_ac_') || lower.includes('air_conditioner');
+  };
+
   // Filtered entities for Home tab:
-  // 1. Must belong to actionable domain (light, switch, climate, cover, fan)
+  // 1. Must belong to actionable domain (light, switch, cover, fan)
   // 2. Hide sensors, persons, zones, sun, events, conversations
-  // 3. Hide unavailable devices by default unless user toggles showUnavailable
-  // 4. Hide user-hidden entities unless in manage mode
+  // 3. Hide secondary aircon sub-switches (handled inside ClimateUnitCard)
+  // 4. Hide unavailable devices unless explicitly toggled
   const filteredEntities = entities.filter((e) => {
     const [domain] = e.entity_id.split('.');
 
     // Domain filter bar
     if (selectedDomain !== 'all') {
       if (domain !== selectedDomain) return false;
+      if (domain === 'switch' && isAirconSubSwitch(e.entity_id)) return false;
     } else {
-      // "All" view only shows real controllable devices, excluding security devices handled in Security tab
       if (!ACTIONABLE_DOMAINS.includes(domain)) return false;
+      if (domain === 'climate') return false; // Rendered in dedicated Climate section
+      if (isAirconSubSwitch(e.entity_id)) return false; // Handled under its respective AC card
       if (isHighImpact(e.entity_id, e.attributes.device_class)) return false;
     }
 
@@ -239,7 +273,7 @@ export const App: React.FC = () => {
 
   const activeDeviceCount = entities.filter((e) => {
     const [domain] = e.entity_id.split('.');
-    return ACTIONABLE_DOMAINS.includes(domain) && (e.state === 'on' || e.state === 'open' || e.state === 'unlocked');
+    return ACTIONABLE_DOMAINS.includes(domain) && (e.state === 'on' || e.state === 'open' || e.state === 'unlocked' || (domain === 'climate' && e.state !== 'off'));
   }).length;
 
   // Security entities (Locks, Garages, Alarms)
@@ -327,8 +361,41 @@ export const App: React.FC = () => {
                 </div>
               )}
 
-              {/* Entities Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+              {/* SECTION: CLIMATE & AIR CONDITIONING (Grouped Units) */}
+              {(selectedDomain === 'all' || selectedDomain === 'climate') && climateEntities.length > 0 && (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-sm font-bold uppercase tracking-wider text-slate-400">
+                      Air Conditioning & Climate Units ({climateEntities.filter(c => c.state !== 'unavailable').length} online)
+                    </h3>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {climateEntities
+                      .filter((c) => showUnavailable || c.state !== 'unavailable')
+                      .map((climate) => (
+                        <ClimateUnitCard
+                          key={climate.entity_id}
+                          climateEntity={climate}
+                          subSwitches={getSubSwitchesForClimate(climate)}
+                          onAction={(entity, domain, service, serviceData) =>
+                            executeServiceCallWithData(entity, domain, service, serviceData)
+                          }
+                          isLoading={loadingEntityId === climate.entity_id}
+                        />
+                      ))}
+                  </div>
+                </div>
+              )}
+
+              {/* SECTION: OTHER ROOM CONTROLS (Lights, Plugs, Switches) */}
+              {(selectedDomain === 'all' || selectedDomain !== 'climate') && (
+                <div className="space-y-4 pt-2">
+                  {selectedDomain === 'all' && (
+                    <h3 className="text-sm font-bold uppercase tracking-wider text-slate-400">
+                      Switches & Room Lights
+                    </h3>
+                  )}
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
                 {filteredEntities.map((entity) => {
                   const isHidden = hiddenEntities.includes(entity.entity_id);
                   return (
@@ -362,7 +429,9 @@ export const App: React.FC = () => {
                     <p className="text-sm font-semibold">No devices found in this filter category</p>
                   </div>
                 )}
-              </div>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 

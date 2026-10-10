@@ -522,12 +522,12 @@ export const App: React.FC = () => {
           activeCount={activeDeviceCount}
         />
 
-        <main className="flex-1 overflow-y-auto p-8 no-scrollbar">
+        <main className="flex-1 overflow-y-auto p-4 sm:p-6 no-scrollbar">
           {/* TAB 1: HOME CONTROLS */}
           {currentTab === 'home' && (
-            <div className="space-y-6">
+            <div className="space-y-4">
               {/* Room & Custom Group Filter Pills */}
-              <div className="flex items-center justify-between gap-4 overflow-x-auto pb-1 no-scrollbar">
+              <div className="flex items-center justify-between gap-3 overflow-x-auto pb-1 no-scrollbar">
                 <div className="flex items-center gap-2.5">
                   <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mr-1 flex items-center gap-1.5 shrink-0">
                     <Layers className="w-4 h-4 text-indigo-500" /> Rooms:
@@ -650,13 +650,13 @@ export const App: React.FC = () => {
 
               {/* SECTION: CLIMATE & AIR CONDITIONING (Grouped Units) */}
               {(selectedDomain === 'all' || selectedDomain === 'climate') && displayClimateEntities.length > 0 && (
-                <div className="space-y-4">
+                <div className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <h3 className="text-sm font-bold uppercase tracking-wider text-slate-400">
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">
                       Air Conditioning & Climate Units ({displayClimateEntities.filter(c => c.state !== 'unavailable').length} online)
                     </h3>
                   </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     {displayClimateEntities.map((climate) => (
                       <ClimateUnitCard
                         key={climate.entity_id}
@@ -676,13 +676,13 @@ export const App: React.FC = () => {
 
               {/* SECTION: OTHER ROOM CONTROLS (Lights, Plugs, Switches) */}
               {(selectedDomain === 'all' || selectedDomain !== 'climate') && (
-                <div className="space-y-4 pt-2">
+                <div className="space-y-3 pt-1">
                   {selectedDomain === 'all' && (
-                    <h3 className="text-sm font-bold uppercase tracking-wider text-slate-400">
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">
                       Switches & Room Lights
                     </h3>
                   )}
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3.5">
                 {filteredEntities.map((entity) => {
                   const isHidden = hiddenEntities.includes(entity.entity_id);
                   return (

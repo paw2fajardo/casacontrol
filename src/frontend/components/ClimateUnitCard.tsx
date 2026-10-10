@@ -63,25 +63,25 @@ export const ClimateUnitCard: React.FC<ClimateUnitProps> = ({
   };
 
   return (
-    <div className={`glass-card rounded-3xl overflow-hidden transition-all duration-300 ${
+    <div className={`glass-card rounded-2xl overflow-hidden transition-all duration-300 ${
       isOn
-        ? 'ring-2 ring-indigo-400/40 shadow-[0_20px_40px_-10px_rgba(99,102,241,0.18)]'
+        ? 'ring-2 ring-indigo-400/40 shadow-[0_16px_32px_-8px_rgba(99,102,241,0.15)]'
         : 'opacity-90'
     }`}>
       {/* Primary Unit Controller Header */}
-      <div className="p-6">
+      <div className="p-4 sm:p-5">
         <div className="flex items-start justify-between">
-          <div className="flex items-center gap-4">
-            <div className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-all ${
+          <div className="flex items-center gap-3">
+            <div className={`w-11 h-11 rounded-xl flex items-center justify-center transition-all shrink-0 ${
               isOn
-                ? 'bg-gradient-to-tr from-indigo-500 to-purple-500 text-white shadow-md shadow-indigo-500/25'
+                ? 'bg-gradient-to-tr from-indigo-500 to-purple-500 text-white shadow-sm shadow-indigo-500/20'
                 : 'bg-slate-100 text-slate-400'
             }`}>
-              <Wind className="w-8 h-8" />
+              <Wind className="w-6 h-6" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="text-lg font-black text-slate-800 tracking-tight leading-tight">{name}</h3>
+                <h3 className="text-base font-extrabold text-slate-800 tracking-tight leading-tight">{name}</h3>
                 {onRename && (
                   <button
                     onClick={(e) => {
@@ -89,20 +89,20 @@ export const ClimateUnitCard: React.FC<ClimateUnitProps> = ({
                       onRename(climateEntity);
                     }}
                     title="Rename aircon"
-                    className="w-7 h-7 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 flex items-center justify-center cursor-pointer transition"
+                    className="w-6 h-6 rounded-md text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 flex items-center justify-center cursor-pointer transition shrink-0"
                   >
-                    <span className="text-xs font-bold">✎</span>
+                    <span className="text-[11px] font-bold">✎</span>
                   </button>
                 )}
               </div>
-              <div className="flex items-center gap-2.5 mt-1">
-                <span className={`text-[11px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${
+              <div className="flex items-center gap-2 mt-0.5">
+                <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${
                   isOn ? 'bg-indigo-50 text-indigo-700 border border-indigo-200/60' : 'bg-slate-100 text-slate-500'
                 }`}>
                   {hvacMode}
                 </span>
                 {currentTemp && (
-                  <span className="text-xs font-semibold text-slate-500">
+                  <span className="text-[11px] font-semibold text-slate-500">
                     Room: <strong className="text-slate-800">{currentTemp}°C</strong>
                   </span>
                 )}
@@ -114,36 +114,36 @@ export const ClimateUnitCard: React.FC<ClimateUnitProps> = ({
           <button
             onClick={handleTogglePower}
             disabled={isLoading}
-            className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-all active:scale-90 cursor-pointer shadow-md ${
+            className={`w-11 h-11 rounded-xl flex items-center justify-center transition-all active:scale-90 cursor-pointer shadow-sm ${
               isOn
-                ? 'bg-gradient-to-tr from-indigo-600 to-purple-600 text-white shadow-indigo-500/30'
+                ? 'bg-gradient-to-tr from-indigo-600 to-purple-600 text-white shadow-indigo-500/25'
                 : 'bg-slate-100 text-slate-400 hover:text-slate-700 hover:bg-slate-200'
             }`}
           >
-            <Power className="w-7 h-7" />
+            <Power className="w-5 h-5" />
           </button>
         </div>
 
         {/* Temperature Dial Controls */}
         {isOn && (
-          <div className="mt-6 pt-6 border-t border-slate-100 flex items-center justify-between bg-gradient-to-r from-slate-50/80 to-indigo-50/50 rounded-2xl p-4 border border-slate-200/50">
+          <div className="mt-4 pt-4 border-t border-slate-100 flex items-center justify-between bg-gradient-to-r from-slate-50/80 to-indigo-50/50 rounded-xl p-3 border border-slate-200/50">
             <div>
-              <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Set Point</div>
-              <div className="text-3xl font-black text-slate-800 font-mono mt-0.5">
+              <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Set Point</div>
+              <div className="text-2xl font-black text-slate-800 font-mono mt-0.5">
                 {targetTemp ? `${targetTemp}°C` : '--'}
               </div>
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
               <button
                 onClick={(e) => handleTempAdjust(-1, e)}
-                className="w-12 h-12 rounded-xl bg-white hover:bg-slate-50 active:scale-95 text-slate-700 font-black text-xl flex items-center justify-center cursor-pointer shadow-sm border border-slate-200/80"
+                className="w-9 h-9 rounded-lg bg-white hover:bg-slate-50 active:scale-95 text-slate-700 font-black text-lg flex items-center justify-center cursor-pointer shadow-xs border border-slate-200/80"
               >
                 -
               </button>
               <button
                 onClick={(e) => handleTempAdjust(1, e)}
-                className="w-12 h-12 rounded-xl bg-white hover:bg-slate-50 active:scale-95 text-slate-700 font-black text-xl flex items-center justify-center cursor-pointer shadow-sm border border-slate-200/80"
+                className="w-9 h-9 rounded-lg bg-white hover:bg-slate-50 active:scale-95 text-slate-700 font-black text-lg flex items-center justify-center cursor-pointer shadow-xs border border-slate-200/80"
               >
                 +
               </button>
@@ -152,9 +152,9 @@ export const ClimateUnitCard: React.FC<ClimateUnitProps> = ({
             {/* Fan Mode Selector */}
             <button
               onClick={handleFanCycle}
-              className="h-12 px-4 rounded-xl bg-white hover:bg-slate-50 active:scale-95 shadow-sm border border-slate-200/80 flex items-center gap-2 cursor-pointer text-xs font-bold text-slate-700"
+              className="h-9 px-3 rounded-lg bg-white hover:bg-slate-50 active:scale-95 shadow-xs border border-slate-200/80 flex items-center gap-1.5 cursor-pointer text-[11px] font-bold text-slate-700"
             >
-              <Wind className="w-4 h-4 text-indigo-500" />
+              <Wind className="w-3.5 h-3.5 text-indigo-500" />
               <span>{fanMode}</span>
             </button>
           </div>
@@ -166,14 +166,14 @@ export const ClimateUnitCard: React.FC<ClimateUnitProps> = ({
         <div className="border-t border-slate-100 bg-slate-50/60 backdrop-blur-md">
           <button
             onClick={() => setIsExpanded(!isExpanded)}
-            className="w-full px-6 py-3 flex items-center justify-between text-xs font-bold text-slate-500 hover:text-slate-800 cursor-pointer"
+            className="w-full px-4 sm:px-5 py-2.5 flex items-center justify-between text-[11px] font-bold text-slate-500 hover:text-slate-800 cursor-pointer"
           >
             <span>{subSwitches.length} Secondary Aircon Controls</span>
-            {isExpanded ? <ChevronUp className="w-4 h-4 text-indigo-500" /> : <ChevronDown className="w-4 h-4" />}
+            {isExpanded ? <ChevronUp className="w-3.5 h-3.5 text-indigo-500" /> : <ChevronDown className="w-3.5 h-3.5" />}
           </button>
 
           {isExpanded && (
-            <div className="px-6 pb-6 pt-2 grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+            <div className="px-4 sm:px-5 pb-4 pt-1 grid grid-cols-1 sm:grid-cols-2 gap-2">
               {subSwitches.map((sw) => {
                 const swIsOn = sw.state === 'on';
                 let label = sw.attributes.friendly_name || sw.entity_id;

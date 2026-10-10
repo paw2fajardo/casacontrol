@@ -55,23 +55,23 @@ export const EntityCard: React.FC<EntityCardProps> = ({
   return (
     <div
       onClick={handleToggle}
-      className={`glass-card group relative min-h-[140px] p-5 rounded-3xl transition-all duration-300 flex flex-col justify-between cursor-pointer select-none active:scale-[0.98] ${
+      className={`glass-card group relative min-h-[96px] p-3.5 rounded-2xl transition-all duration-300 flex flex-col justify-between cursor-pointer select-none active:scale-[0.98] ${
         isOn && (isLight || isSwitch)
-          ? 'ring-2 ring-indigo-400/50 bg-gradient-to-br from-white/95 to-indigo-50/50'
+          ? 'ring-2 ring-indigo-400/50 bg-gradient-to-br from-white/95 to-indigo-50/50 shadow-sm'
           : isLock && isLocked
-          ? 'ring-2 ring-emerald-400/50 bg-gradient-to-br from-white/95 to-emerald-50/50'
+          ? 'ring-2 ring-emerald-400/50 bg-gradient-to-br from-white/95 to-emerald-50/50 shadow-sm'
           : ''
       }`}
     >
-      <div className="flex items-start justify-between">
-        <div className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-all ${
-          isOn ? 'bg-indigo-50 text-indigo-600 shadow-sm' : isLock && isLocked ? 'bg-emerald-50 text-emerald-600 shadow-sm' : 'bg-slate-100/80 text-slate-400'
+      <div className="flex items-center justify-between gap-2">
+        <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all shrink-0 ${
+          isOn ? 'bg-indigo-50 text-indigo-600 shadow-xs' : isLock && isLocked ? 'bg-emerald-50 text-emerald-600 shadow-xs' : 'bg-slate-100/80 text-slate-400'
         }`}>
           {getIcon()}
         </div>
 
         {/* Tactile State Toggle Pill */}
-        <div className={`px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-wider shadow-sm ${
+        <div className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider shadow-xs shrink-0 ${
           isOn
             ? 'bg-gradient-to-r from-indigo-500 to-purple-500 text-white'
             : isLock && isLocked
@@ -82,9 +82,9 @@ export const EntityCard: React.FC<EntityCardProps> = ({
         </div>
       </div>
 
-      <div>
-        <div className="flex items-center justify-between gap-2">
-          <h4 className="text-base font-extrabold text-slate-800 tracking-tight line-clamp-1 group-hover:text-indigo-600 transition flex-1">
+      <div className="mt-2">
+        <div className="flex items-center justify-between gap-1.5">
+          <h4 className="text-sm font-extrabold text-slate-800 tracking-tight truncate group-hover:text-indigo-600 transition flex-1">
             {name}
           </h4>
           {onRename && (
@@ -94,13 +94,13 @@ export const EntityCard: React.FC<EntityCardProps> = ({
                 onRename(entity);
               }}
               title="Rename device"
-              className="w-7 h-7 rounded-lg text-slate-300 hover:text-indigo-600 hover:bg-indigo-50 flex items-center justify-center cursor-pointer transition opacity-0 group-hover:opacity-100"
+              className="w-6 h-6 rounded-md text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 flex items-center justify-center cursor-pointer transition shrink-0"
             >
-              <span className="text-xs font-bold">✎</span>
+              <span className="text-[11px] font-bold">✎</span>
             </button>
           )}
         </div>
-        <div className="text-xs font-semibold text-slate-400 flex items-center gap-2 mt-0.5">
+        <div className="text-[11px] font-semibold text-slate-400 flex items-center gap-1.5 mt-0.5">
           <span className="capitalize">{domain}</span>
           {entity.attributes.current_temperature && (
             <span>• {entity.attributes.current_temperature}°</span>
@@ -112,8 +112,8 @@ export const EntityCard: React.FC<EntityCardProps> = ({
       </div>
 
       {isLoading && (
-        <div className="absolute inset-0 bg-white/70 rounded-3xl backdrop-blur-[2px] flex items-center justify-center">
-          <span className="w-6 h-6 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
+        <div className="absolute inset-0 bg-white/70 rounded-2xl backdrop-blur-[2px] flex items-center justify-center">
+          <span className="w-5 h-5 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
         </div>
       )}
     </div>

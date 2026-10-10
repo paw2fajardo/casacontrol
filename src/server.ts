@@ -5,6 +5,7 @@ import { healthRoutes } from './routes/health.js';
 import { groceryRoutes, GroceryRouteOptions } from './routes/groceries.js';
 import { homeassistantRoutes, HomeAssistantRouteOptions } from './routes/homeassistant.js';
 import { scheduleRoutes, ScheduleRouteOptions } from './routes/schedule.js';
+import { settingsRoutes } from './routes/settings.js';
 
 import fastifyStatic from '@fastify/static';
 import path from 'node:path';
@@ -51,6 +52,15 @@ export async function buildServer(options: BuildServerOptions = {}): Promise<Fas
   });
   await server.register(scheduleRoutes, {
     googleClient: options.googleClient,
+  });
+  await server.register(settingsRoutes);
+
+  // SPA fallback for HTML5 History API routes (/home, /security, /schedule, /groceries)
+  server.setNotFoundHandler((request, reply) => {
+    if (request.raw.url && request.raw.url.startsWith('/api')) {
+      return reply.code(404).send({ error: 'Not Found', message: `Route ${request.method}:${request.url} not found` });
+    }
+    return reply.sendFile('index.html');
   });
 
   return server;

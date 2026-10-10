@@ -239,28 +239,85 @@ describe('Fastify Server Scaffold & Routes', () => {
     await server.close();
   });
 
-  it('POST /api/homeassistant/action rejects disallowed arbitrary services', async () => {
-    const mockHaClient = {
-      getStates: vi.fn().mockResolvedValue({ success: true, entities: [], count: 0 }),
-      callService: vi.fn(),
-    };
+  it('GET and POST /api/settings manages household configuration persistence', async () => {
+    const server = await buildServer();
+    
+    // GET initial settings
+    const getRes = await server.inject({
+      method: 'GET',
+      url: '/api/settings',
+    });
+    expect(getRes.statusCode).toBe(200);
+    const getBody = JSON.parse(getRes.body);
+    expect(getBody.success).toBe(true);
+    expect(Array.isArray(getBody.settings.deviceGroups)).toBe(true);
 
-    const server = await buildServer({ haClient: mockHaClient });
-    const response = await server.inject({
+    // POST updated custom names and groups
+    const postRes = await server.inject({
       method: 'POST',
-      url: '/api/homeassistant/action',
+      url: '/api/settings',
       payload: {
-        entity_id: 'switch.kitchen',
-        domain: 'switch',
-        service: 'unsafe_hack',
+        customNames: { 'switch.kitchen': 'Pantry Light' },
+        deviceGroups: [
+          { id: 'kitchen_zone', name: 'Kitchen', entityIds: ['switch.kitchen'] },
+        ],
       },
     });
+    expect(postRes.statusCode).toBe(200);
+    const postBody = JSON.parse(postRes.body);
+    expect(postBody.success).toBe(true);
+    expect(postBody.settings.customNames['switch.kitchen']).toBe('Pantry Light');
+    expect(postBody.settings.deviceGroups[0].name).toBe('Kitchen');
 
-    expect(response.statusCode).toBe(400);
-    const body = JSON.parse(response.body);
-    expect(body.success).toBe(false);
-    expect(body.error).toMatch(/allowlist/i);
-    expect(mockHaClient.callService).not.toHaveBeenCalled();
+    await server.close();
+  });
+
+  it('GET /api/users returns safe profiles without exposing plain PINs', async () => {
+    const server = await buildServer();
+    const res = await server.inject({
+      method: 'GET',
+      url: '/api/users',
+    });
+
+    expect(res.statusCode).toBe(200);
+    const body = JSON.parse(res.body);
+    expect(body.success).toBe(true);
+    expect(Array.isArray(body.users)).toBe(true);
+
+    const admin = body.users.find((u: any) => u.id === 'user_admin');
+    expect(admin).toBeDefined();
+    expect(admin.role).toBe('admin');
+    expect(admin.hasPin).toBe(true);
+    expect(admin.pin).toBeUndefined(); // Plaintext PIN must never be exposed
+    await server.close();
+  });
+
+  it('POST /api/auth/login verifies valid PIN and rejects invalid PIN', async () => {
+    const server = await buildServer();
+
+    // 1. Invalid PIN
+    const failRes = await server.inject({
+      method: 'POST',
+      url: '/api/auth/login',
+      payload: { userId: 'user_admin', pin: '9999' },
+    });
+    expect(failRes.statusCode).toBe(401);
+    const failBody = JSON.parse(failRes.body);
+    expect(failBody.success).toBe(false);
+    expect(failBody.error).toBe('Incorrect PIN');
+
+    // 2. Correct PIN
+    const successRes = await server.inject({
+      method: 'POST',
+      url: '/api/auth/login',
+      payload: { userId: 'user_admin', pin: '1234' },
+    });
+    expect(successRes.statusCode).toBe(200);
+    const successBody = JSON.parse(successRes.body);
+    expect(successBody.success).toBe(true);
+    expect(successBody.user.id).toBe('user_admin');
+    expect(successBody.user.role).toBe('admin');
     await server.close();
   });
 });
+

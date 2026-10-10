@@ -117,7 +117,8 @@ export class GoogleClient {
   }
 
   /**
-   * Fetches calendar events from the primary calendar within the specified range.
+  /**
+   * Fetches calendar events across all calendars the user has access to (Primary + Family + Shared).
    */
   async fetchCalendarEvents(timeMin?: string, timeMax?: string): Promise<CalendarEventsResult> {
     if (!this.hasCredentials()) {
@@ -139,96 +140,125 @@ export class GoogleClient {
       };
     }
 
-    // Default timeMin to start of current day if not provided
-    const min = timeMin || new Date().toISOString();
-    const query = new URLSearchParams({
-      singleEvents: 'true',
-      orderBy: 'startTime',
-      timeMin: min,
-      maxResults: '100',
-    });
-    if (timeMax) {
-      query.set('timeMax', timeMax);
-    }
-
-    const endpoint = `https://www.googleapis.com/calendar/v3/calendars/primary/events?${query.toString()}`;
-
+    // 1. Fetch all calendars the account is subscribed to
+    let calendarEntries: Array<{ id: string; summary: string }> = [];
     try {
-      const res = await this.fetchWithTimeout(endpoint, {
-        method: 'GET',
+      const listRes = await this.fetchWithTimeout('https://www.googleapis.com/calendar/v3/users/me/calendarList', {
         headers: {
           Authorization: `Bearer ${accessToken}`,
           Accept: 'application/json',
         },
       });
-
-      if (!res.ok) {
-        let errDesc = '';
-        try {
-          const errJson = (await res.json()) as any;
-          errDesc = errJson.error?.message || JSON.stringify(errJson);
-        } catch {
-          errDesc = res.statusText;
+      if (listRes && typeof listRes.ok === 'boolean' && listRes.ok) {
+        const listData = (await listRes.json()) as any;
+        if (Array.isArray(listData?.items) && listData.items.length > 0) {
+          calendarEntries = listData.items
+            .filter((c: any) => !c.id.includes('holiday@group.v.calendar.google.com') && !c.deleted)
+            .map((c: any) => ({
+              id: c.id,
+              summary: c.summary || 'Calendar',
+            }));
         }
-        return {
-          success: false,
-          events: [],
-          error: `Google Calendar API error (HTTP ${res.status}): ${errDesc}`,
-        };
       }
+    } catch {
+      // Ignore list failure, will fallback to primary below
+    }
 
-      let data: any;
-      try {
-        data = await res.json();
-      } catch {
-        return {
-          success: false,
-          events: [],
-          error: 'Malformed JSON response from Google Calendar API',
-        };
-      }
+    if (calendarEntries.length === 0) {
+      calendarEntries = [{ id: 'primary', summary: 'Google Calendar' }];
+    }
 
-      const rawItems = Array.isArray(data?.items) ? data.items : [];
-      const events: ScheduleItem[] = rawItems
-        .filter((item: any) => item.status !== 'cancelled')
-        .map((item: any) => {
-          const isAllDay = Boolean(item.start?.date && !item.start?.dateTime);
-          const start = item.start?.dateTime || item.start?.date || '';
-          const end = item.end?.dateTime || item.end?.date || undefined;
+    // Default timeMin: if not provided, look from 30 days ago to catch upcoming and recent events
+    const min = timeMin || new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+    const query = new URLSearchParams({
+      singleEvents: 'true',
+      orderBy: 'startTime',
+      timeMin: min,
+      maxResults: '250',
+    });
+    if (timeMax) {
+      query.set('timeMax', timeMax);
+    }
 
-          return {
-            id: `cal_${item.id}`,
-            title: item.summary || '(No title)',
-            type: 'calendar' as const,
-            start,
-            end,
-            allDay: isAllDay,
-            location: item.location || undefined,
-            description: item.description || undefined,
-            status: item.status || 'confirmed',
-            source: 'Google Calendar',
-            link: item.htmlLink || undefined,
-          };
-        });
+    const allEvents: ScheduleItem[] = [];
+    const errors: string[] = [];
 
-      return {
-        success: true,
-        events,
-      };
-    } catch (err: any) {
-      if (err?.name === 'AbortError') {
-        return {
-          success: false,
-          events: [],
-          error: `Google Calendar request timed out after ${this.timeoutMs}ms`,
-        };
-      }
+    // 2. Fetch events from accessible calendars
+    await Promise.all(
+      calendarEntries.map(async (cal) => {
+        const endpoint = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(cal.id)}/events?${query.toString()}`;
+        try {
+          const res = await this.fetchWithTimeout(endpoint, {
+            method: 'GET',
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+              Accept: 'application/json',
+            },
+          });
+
+          if (!res.ok) {
+            let errDesc = '';
+            try {
+              const errJson = (await res.json()) as any;
+              errDesc = errJson.error?.message || JSON.stringify(errJson);
+            } catch {
+              errDesc = res.statusText;
+            }
+            errors.push(`Google Calendar API error (HTTP ${res.status}): ${errDesc}`);
+            return;
+          }
+
+          const data = (await res.json()) as any;
+          const rawItems = Array.isArray(data?.items) ? data.items : [];
+
+          for (const item of rawItems) {
+            if (item.status === 'cancelled') continue;
+
+            const isAllDay = Boolean(item.start?.date && !item.start?.dateTime);
+            const start = item.start?.dateTime || item.start?.date || '';
+            const end = item.end?.dateTime || item.end?.date || undefined;
+
+            allEvents.push({
+              id: `cal_${item.id}`,
+              title: item.summary || '(No title)',
+              type: 'calendar' as const,
+              start,
+              end,
+              allDay: isAllDay,
+              location: item.location || undefined,
+              description: item.description || undefined,
+              status: item.status || 'confirmed',
+              source: cal.summary,
+              link: item.htmlLink || undefined,
+            });
+          }
+        } catch (err: any) {
+          errors.push(err?.message || 'Network error fetching Google Calendar events');
+        }
+      })
+    );
+
+    // If all calendars failed and no events retrieved
+    if (allEvents.length === 0 && errors.length === calendarEntries.length) {
       return {
         success: false,
         events: [],
-        error: err?.message || 'Network error fetching Google Calendar events',
+        error: errors[0],
       };
     }
+
+    // Deduplicate by event ID just in case
+    const seen = new Set<string>();
+    const uniqueEvents = allEvents.filter((ev) => {
+      if (seen.has(ev.id)) return false;
+      seen.add(ev.id);
+      return true;
+    });
+
+    return {
+      success: true,
+      events: uniqueEvents,
+    };
   }
 
   /**

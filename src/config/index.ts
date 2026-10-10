@@ -1,11 +1,20 @@
+import dotenv from 'dotenv';
+
+// Automatically load .env if present
+dotenv.config();
+
 export interface AppConfig {
   PORT: number;
   HOST: string;
   NODE_ENV: string;
+  DATA_DIR: string;
   CARTSYNC_BASE_URL: string;
   CARTSYNC_AUTH_TOKEN?: string;
   HOMEASSISTANT_BASE_URL?: string;
   HOMEASSISTANT_AUTH_TOKEN?: string;
+  GOOGLE_CLIENT_ID?: string;
+  GOOGLE_CLIENT_SECRET?: string;
+  GOOGLE_REFRESH_TOKEN?: string;
   [key: string]: string | number | undefined;
 }
 
@@ -17,10 +26,14 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     PORT: port,
     HOST: env.HOST || '0.0.0.0',
     NODE_ENV: env.NODE_ENV || 'development',
+    DATA_DIR: env.DATA_DIR || './data',
     CARTSYNC_BASE_URL: env.CARTSYNC_BASE_URL || 'http://cartsync:3001',
     CARTSYNC_AUTH_TOKEN: env.CARTSYNC_AUTH_TOKEN || undefined,
     HOMEASSISTANT_BASE_URL: env.HOMEASSISTANT_BASE_URL || undefined,
     HOMEASSISTANT_AUTH_TOKEN: env.HOMEASSISTANT_AUTH_TOKEN || undefined,
+    GOOGLE_CLIENT_ID: env.GOOGLE_CLIENT_ID || undefined,
+    GOOGLE_CLIENT_SECRET: env.GOOGLE_CLIENT_SECRET || undefined,
+    GOOGLE_REFRESH_TOKEN: env.GOOGLE_REFRESH_TOKEN || undefined,
   };
 }
 

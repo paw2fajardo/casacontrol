@@ -12,6 +12,7 @@ services:
       - NODE_ENV=production
       - PORT=3000
       - HOST=0.0.0.0
+      - DATA_DIR=/app/data
       - CARTSYNC_BASE_URL=${CARTSYNC_BASE_URL:-http://192.168.10.200:9090}
       - CARTSYNC_AUTH_TOKEN=${CARTSYNC_AUTH_TOKEN:-}
       - HOMEASSISTANT_BASE_URL=${HOMEASSISTANT_BASE_URL:-http://192.168.10.200:8123}
@@ -19,8 +20,14 @@ services:
       - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-}
       - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET:-}
       - GOOGLE_REFRESH_TOKEN=${GOOGLE_REFRESH_TOKEN:-}
+    volumes:
+      - casacontrol_data:/app/data
     networks:
       - casacontrol_network
+
+volumes:
+  casacontrol_data:
+    name: casacontrol_data
 
 networks:
   casacontrol_network:

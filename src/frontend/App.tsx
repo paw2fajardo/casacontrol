@@ -2,8 +2,16 @@ import React, { useState, useEffect } from 'react';
 import { Sidebar, NavTab } from './components/Sidebar';
 import { Header } from './components/Header';
 import { EntityCard } from './components/EntityCard';
+import { ClimateUnitCard } from './components/ClimateUnitCard';
 import { ConfirmationModal } from './components/ConfirmationModal';
-import { HAEntityState, ScheduleItem, GroceryItem } from './types';
+import { RenameModal } from './components/RenameModal';
+import { GroupModal } from './components/GroupModal';
+import { ProfileLoginModal } from './components/ProfileLoginModal';
+import { UserManagementModal } from './components/UserManagementModal';
+import { GroceryView } from './components/GroceryView';
+import { ScheduleView } from './components/ScheduleView';
+import { CameraFeedCard } from './components/CameraFeedCard';
+import { HAEntityState, ScheduleItem, GroceryItem, DeviceGroup, UserProfile } from './types';
 import { 
   Calendar as CalendarIcon, 
   CheckSquare, 
@@ -12,15 +20,116 @@ import {
   DoorClosed, 
   DoorOpen, 
   ShieldCheck, 
+  Shield,
+  Activity,
+  Radio,
+  Bell,
+  Camera,
   AlertCircle, 
   ShoppingCart,
   CheckCircle2,
   Clock,
-  Sparkles
+  Sparkles,
+  Layers,
+  Plus
 } from 'lucide-react';
 
 export const App: React.FC = () => {
-  const [currentTab, setCurrentTab] = useState<NavTab>('home');
+  // Sync tab, schedule subpath, and filter parameters with URL
+  interface RouteState {
+    tab: NavTab;
+    scheduleViewMode?: 'timeline' | 'month' | 'agenda';
+    scheduleFilterType?: 'all' | 'calendar' | 'task';
+  }
+
+  const parseRoute = (): RouteState => {
+    const pathname = window.location.pathname.toLowerCase();
+    const searchParams = new URLSearchParams(window.location.search);
+    const viewParam = searchParams.get('view')?.toLowerCase();
+
+    // Map filter query parameter (?view=all | events/calendar | tasks/task)
+    let filterType: 'all' | 'calendar' | 'task' = 'all';
+    if (viewParam === 'calendar' || viewParam === 'events' || viewParam === 'event') {
+      filterType = 'calendar';
+    } else if (viewParam === 'task' || viewParam === 'tasks') {
+      filterType = 'task';
+    }
+
+    if (pathname.startsWith('/schedule')) {
+      let viewMode: 'timeline' | 'month' | 'agenda' = 'timeline';
+      if (pathname.includes('/month')) {
+        viewMode = 'month';
+      } else if (pathname.includes('/agenda')) {
+        viewMode = 'agenda';
+      } else if (pathname.includes('/3day') || pathname.includes('/timeline')) {
+        viewMode = 'timeline';
+      }
+
+      return {
+        tab: 'schedule',
+        scheduleViewMode: viewMode,
+        scheduleFilterType: filterType,
+      };
+    }
+
+    if (pathname.startsWith('/security')) return { tab: 'security' };
+    if (pathname.startsWith('/groceries')) return { tab: 'groceries' };
+    return { tab: 'home' };
+  };
+
+  const initialRoute = parseRoute();
+  const [currentTab, setCurrentTab] = useState<NavTab>(initialRoute.tab);
+  const [scheduleViewMode, setScheduleViewMode] = useState<'timeline' | 'month' | 'agenda'>(
+    initialRoute.scheduleViewMode || 'timeline'
+  );
+  const [scheduleFilterType, setScheduleFilterType] = useState<'all' | 'calendar' | 'task'>(
+    initialRoute.scheduleFilterType || 'all'
+  );
+
+  const handleSelectTab = (tab: NavTab) => {
+    setCurrentTab(tab);
+    if (tab === 'schedule') {
+      const subpath = scheduleViewMode === 'timeline' ? '3day' : scheduleViewMode;
+      const targetPath = `/schedule/${subpath}?view=${scheduleFilterType}`;
+      if (window.location.pathname + window.location.search !== targetPath) {
+        window.history.pushState(null, '', targetPath);
+      }
+    } else {
+      const targetPath = `/${tab}`;
+      if (window.location.pathname !== targetPath) {
+        window.history.pushState(null, '', targetPath);
+      }
+    }
+  };
+
+  const handleScheduleRouteStateChange = (
+    newViewMode: 'timeline' | 'month' | 'agenda',
+    newFilterType: 'all' | 'calendar' | 'task'
+  ) => {
+    setScheduleViewMode(newViewMode);
+    setScheduleFilterType(newFilterType);
+    const subpath = newViewMode === 'timeline' ? '3day' : newViewMode;
+    const targetUrl = `/schedule/${subpath}?view=${newFilterType}`;
+    if (window.location.pathname + window.location.search !== targetUrl) {
+      window.history.pushState(null, '', targetUrl);
+    }
+  };
+
+  useEffect(() => {
+    const handlePopState = () => {
+      const route = parseRoute();
+      setCurrentTab(route.tab);
+      if (route.scheduleViewMode) {
+        setScheduleViewMode(route.scheduleViewMode);
+      }
+      if (route.scheduleFilterType) {
+        setScheduleFilterType(route.scheduleFilterType);
+      }
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
   const [entities, setEntities] = useState<HAEntityState[]>([]);
   const [schedule, setSchedule] = useState<ScheduleItem[]>([]);
   const [groceries, setGroceries] = useState<GroceryItem[]>([]);
@@ -92,9 +201,62 @@ export const App: React.FC = () => {
     }
   };
 
+  // User authentication and profile state
+  const [currentUser, setCurrentUser] = useState<UserProfile | null>(() => {
+    try {
+      const stored = localStorage.getItem('casacontrol_current_user');
+      return stored ? JSON.parse(stored) : null;
+    } catch {
+      return null;
+    }
+  });
+  const [users, setUsers] = useState<UserProfile[]>([]);
+  const [isLoginModalOpen, setIsLoginModalOpen] = useState<boolean>(false);
+  const [isUserManagerOpen, setIsUserManagerOpen] = useState<boolean>(false);
+
+  // Fetch available user profiles
+  const fetchUsers = async () => {
+    try {
+      const res = await fetch('/api/users');
+      const data = await res.json();
+      if (data.success && Array.isArray(data.users)) {
+        setUsers(data.users);
+        // If current user is already set, keep their data refreshed
+        setCurrentUser((curr) => {
+          if (!curr) return null;
+          const fresh = data.users.find((u: UserProfile) => u.id === curr.id);
+          return fresh ? { ...curr, ...fresh } : curr;
+        });
+      }
+    } catch (err) {
+      console.warn('Failed to fetch user profiles:', err);
+    }
+  };
+
+  // Fetch household settings (custom groups, names, hidden entities)
+  const fetchSettings = async () => {
+    try {
+      const res = await fetch('/api/settings');
+      const data = await res.json();
+      if (data.success && data.settings) {
+        if (Array.isArray(data.settings.deviceGroups)) {
+          setDeviceGroups(data.settings.deviceGroups);
+        }
+        if (data.settings.customNames && typeof data.settings.customNames === 'object') {
+          setCustomNames(data.settings.customNames);
+        }
+        if (Array.isArray(data.settings.hiddenEntities)) {
+          setHiddenEntities(data.settings.hiddenEntities);
+        }
+      }
+    } catch (err) {
+      console.warn('Failed to fetch household settings from server, using local fallback:', err);
+    }
+  };
+
   const handleRefreshAll = async () => {
     setIsRefreshing(true);
-    await Promise.all([fetchEntities(), fetchSchedule(), fetchGroceries()]);
+    await Promise.all([fetchEntities(), fetchSchedule(), fetchGroceries(), fetchSettings(), fetchUsers()]);
     setIsRefreshing(false);
   };
 
@@ -105,7 +267,9 @@ export const App: React.FC = () => {
     const slowInterval = setInterval(() => {
       fetchSchedule();
       fetchGroceries();
-    }, 60000);
+      fetchSettings();
+      fetchUsers();
+    }, 30000);
 
     return () => {
       clearInterval(haInterval);
@@ -113,12 +277,34 @@ export const App: React.FC = () => {
     };
   }, []);
 
-  // Check if entity is high-impact
+  // Check if entity is high-impact (requires confirmation)
   const isHighImpact = (entityId: string, deviceClass?: string) => {
     const [domain] = entityId.split('.');
+    const lowerId = entityId.toLowerCase();
     if (domain === 'lock') return true;
     if (domain === 'alarm_control_panel') return true;
-    if (domain === 'cover' && (deviceClass === 'garage' || entityId.includes('garage'))) return true;
+    if (domain === 'cover' && (deviceClass === 'garage' || lowerId.includes('garage'))) return true;
+    if (domain === 'switch' && (lowerId.includes('guard_mode') || lowerId.includes('_alarm') || lowerId.endsWith('alarm') || deviceClass === 'security')) {
+      return true;
+    }
+    return false;
+  };
+
+  // Check if entity is a perimeter security sensor (doors, windows, motion)
+  const isSecuritySensor = (entity: HAEntityState) => {
+    const [domain] = entity.entity_id.split('.');
+    const lowerId = entity.entity_id.toLowerCase();
+    const devClass = entity.attributes.device_class?.toLowerCase?.();
+    const name = (entity.attributes.friendly_name || '').toLowerCase();
+
+    if (domain === 'binary_sensor') {
+      if (devClass === 'door' || devClass === 'window' || devClass === 'opening' || devClass === 'motion') {
+        return true;
+      }
+      if (lowerId.includes('motion') || lowerId.includes('contact_state') || name.includes('motion sensor') || name.includes('magnet sensor')) {
+        return true;
+      }
+    }
     return false;
   };
 
@@ -127,7 +313,8 @@ export const App: React.FC = () => {
     entity: HAEntityState,
     domain: string,
     service: string,
-    confirmed = false
+    confirmed = false,
+    serviceData?: Record<string, any>
   ) => {
     setLoadingEntityId(entity.entity_id);
     try {
@@ -138,6 +325,7 @@ export const App: React.FC = () => {
           entity_id: entity.entity_id,
           domain,
           service,
+          service_data: serviceData,
           confirmed,
         }),
       });
@@ -154,6 +342,15 @@ export const App: React.FC = () => {
     } finally {
       setLoadingEntityId(null);
     }
+  };
+
+  const executeServiceCallWithData = (
+    entity: HAEntityState,
+    domain: string,
+    service: string,
+    serviceData?: Record<string, any>
+  ) => {
+    executeServiceCall(entity, domain, service, false, serviceData);
   };
 
   const handleEntityAction = (entity: HAEntityState, domain: string, service: string) => {
@@ -179,29 +376,306 @@ export const App: React.FC = () => {
     setPendingAction(null);
   };
 
-  // Filtered entities for Home tab
-  const filteredEntities = entities.filter((e) => {
-    if (selectedDomain === 'all') return true;
-    return e.entity_id.startsWith(`${selectedDomain}.`);
+  // Actionable controllable domains only
+  const ACTIONABLE_DOMAINS = ['light', 'switch', 'climate', 'cover', 'lock', 'fan'];
+
+  // Persistent user customization: custom device names (stored in localStorage)
+  const [customNames, setCustomNames] = useState<Record<string, string>>(() => {
+    try {
+      const stored = localStorage.getItem('casacontrol_custom_names');
+      return stored ? JSON.parse(stored) : {};
+    } catch {
+      return {};
+    }
   });
 
-  const activeDeviceCount = entities.filter(
-    (e) => e.state === 'on' || e.state === 'open' || e.state === 'unlocked'
-  ).length;
+  // Helper to sync settings to server
+  const syncSettingsToServer = async (patch: {
+    deviceGroups?: DeviceGroup[];
+    customNames?: Record<string, string>;
+    hiddenEntities?: string[];
+  }) => {
+    try {
+      await fetch('/api/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(patch),
+      });
+    } catch (err) {
+      console.warn('Failed to persist settings to server:', err);
+    }
+  };
 
-  // Security entities
-  const securityEntities = entities.filter((e) =>
+  const [renamingEntity, setRenamingEntity] = useState<HAEntityState | null>(null);
+
+  const handleSaveCustomName = (entityId: string, newName: string) => {
+    setCustomNames((prev) => {
+      const updated = { ...prev, [entityId]: newName };
+      try {
+        localStorage.setItem('casacontrol_custom_names', JSON.stringify(updated));
+      } catch {}
+      syncSettingsToServer({ customNames: updated });
+      return updated;
+    });
+  };
+
+  const handleResetCustomName = (entityId: string) => {
+    setCustomNames((prev) => {
+      const updated = { ...prev };
+      delete updated[entityId];
+      try {
+        localStorage.setItem('casacontrol_custom_names', JSON.stringify(updated));
+      } catch {}
+      syncSettingsToServer({ customNames: updated });
+      return updated;
+    });
+  };
+
+  // Persistent user customization: custom device groups / rooms (synced with server)
+  const [deviceGroups, setDeviceGroups] = useState<DeviceGroup[]>(() => {
+    try {
+      const stored = localStorage.getItem('casacontrol_device_groups');
+      if (stored) return JSON.parse(stored);
+      return [
+        {
+          id: 'group_master_bedroom',
+          name: "Master's Bedroom",
+          entityIds: [
+            'climate.master_s_bedroom_ac_czeozcvgaae_climate',
+            'switch.smartplug_p100_ashfan',
+          ],
+        },
+        {
+          id: 'group_kuyas_room',
+          name: "Kuya's Room",
+          entityIds: ['climate.kuya_s_ac_cmskusvgaae_climate'],
+        },
+        {
+          id: 'group_girls_room',
+          name: "Girls' Room",
+          entityIds: [
+            'climate.girls_ac_cmsi9yvgaai_climate',
+            'switch.p110_girls_bedroom',
+          ],
+        },
+      ];
+    } catch {
+      return [];
+    }
+  });
+
+  const [selectedGroupId, setSelectedGroupId] = useState<string>('all');
+  const [isGroupModalOpen, setIsGroupModalOpen] = useState<boolean>(false);
+  const [groupToEdit, setGroupToEdit] = useState<DeviceGroup | null>(null);
+
+  const handleSaveGroup = (group: DeviceGroup) => {
+    setDeviceGroups((prev) => {
+      const exists = prev.some((g) => g.id === group.id);
+      const updated = exists
+        ? prev.map((g) => (g.id === group.id ? group : g))
+        : [...prev, group];
+      try {
+        localStorage.setItem('casacontrol_device_groups', JSON.stringify(updated));
+      } catch {}
+      syncSettingsToServer({ deviceGroups: updated });
+      return updated;
+    });
+  };
+
+  const handleDeleteGroup = (groupId: string) => {
+    setDeviceGroups((prev) => {
+      const updated = prev.filter((g) => g.id !== groupId);
+      try {
+        localStorage.setItem('casacontrol_device_groups', JSON.stringify(updated));
+      } catch {}
+      syncSettingsToServer({ deviceGroups: updated });
+      return updated;
+    });
+    if (selectedGroupId === groupId) {
+      setSelectedGroupId('all');
+    }
+  };
+
+  // Persistent user customization: pinned or hidden entities
+  const [hiddenEntities, setHiddenEntities] = useState<string[]>(() => {
+    try {
+      const stored = localStorage.getItem('casacontrol_hidden_entities');
+      return stored ? JSON.parse(stored) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  const [isManageMode, setIsManageMode] = useState<boolean>(false);
+  const [showUnavailable, setShowUnavailable] = useState<boolean>(false);
+
+  const toggleHideEntity = (entityId: string) => {
+    setHiddenEntities((prev) => {
+      const updated = prev.includes(entityId)
+        ? prev.filter((id) => id !== entityId)
+        : [...prev, entityId];
+      try {
+        localStorage.setItem('casacontrol_hidden_entities', JSON.stringify(updated));
+      } catch {}
+      syncSettingsToServer({ hiddenEntities: updated });
+      return updated;
+    });
+  };
+
+  // Identify all climate units
+  const climateEntities = entities.filter((e) => e.entity_id.startsWith('climate.'));
+
+  // Separate sub-switches belonging strictly to each specific AC unit
+  const getSubSwitchesForClimate = (climate: HAEntityState) => {
+    const climateId = climate.entity_id.toLowerCase();
+    // Specific unit identifiers:
+    let unitKey = '';
+    if (climateId.includes('master_s_bedroom') || climateId.includes('czeozcvgaae')) {
+      unitKey = 'czeozcvgaae';
+    } else if (climateId.includes('kuya') || climateId.includes('cmskusvgaae')) {
+      unitKey = 'cmskusvgaae';
+    } else if (climateId.includes('girls') || climateId.includes('cmsi9yvgaai')) {
+      unitKey = 'cmsi9yvgaai';
+    } else if (climateId.includes('living_room')) {
+      unitKey = 'living_room_aircon';
+    }
+
+    if (!unitKey) return [];
+
+    return entities.filter((e) => {
+      if (!e.entity_id.startsWith('switch.')) return false;
+      const swId = e.entity_id.toLowerCase();
+      // Must belong to this exact unit
+      if (!swId.includes(unitKey)) return false;
+      // Filter out redundant "power_switch" since the main AC card has a power toggle
+      if (swId.includes('power_switch')) return false;
+      // Filter out unavailable switches
+      if (e.state === 'unavailable' || e.state === 'unknown') return false;
+      return true;
+    });
+  };
+
+  const isAirconSubSwitch = (entityId: string) => {
+    if (!entityId.startsWith('switch.')) return false;
+    const lower = entityId.toLowerCase();
+    return (
+      lower.includes('czeozcvgaae') ||
+      lower.includes('cmskusvgaae') ||
+      lower.includes('cmsi9yvgaai') ||
+      lower.includes('living_room_aircon') ||
+      lower.includes('air_conditioner')
+    );
+  };
+
+  // User profile scoping: Non-admin users only see their allowed groups
+  const visibleGroups = currentUser?.role === 'admin'
+    ? deviceGroups
+    : deviceGroups.filter((g) => currentUser?.allowedGroupIds?.includes(g.id));
+
+  // Auto-select first allowed room if user has restricted access and current selection is invalid
+  useEffect(() => {
+    if (currentUser?.role === 'user') {
+      const allowed = currentUser.allowedGroupIds || [];
+      if (allowed.length > 0 && (selectedGroupId === 'all' || !allowed.includes(selectedGroupId))) {
+        setSelectedGroupId(allowed[0]);
+      }
+    }
+  }, [currentUser, selectedGroupId]);
+
+  // Active selected room group
+  const activeGroup = selectedGroupId !== 'all' ? visibleGroups.find((g) => g.id === selectedGroupId) : null;
+
+  // Filtered climate entities (scoped to user's assigned rooms if non-admin)
+  const displayClimateEntities = climateEntities.filter((c) => {
+    if (currentUser?.role === 'user') {
+      // Must belong to one of the user's allowed rooms
+      const isAllowedForUser = visibleGroups.some((g) => g.entityIds.includes(c.entity_id));
+      if (!isAllowedForUser) return false;
+    }
+    if (activeGroup && !activeGroup.entityIds.includes(c.entity_id)) {
+      return false;
+    }
+    return showUnavailable || c.state !== 'unavailable';
+  });
+
+  // Filtered entities for Home tab:
+  // 1. Must belong to actionable domain (light, switch, cover, fan)
+  // 2. Hide sensors, persons, zones, sun, events, conversations
+  // 3. Hide secondary aircon sub-switches (handled inside ClimateUnitCard)
+  // 4. Hide unavailable devices unless explicitly toggled
+  // 5. Must match active room group if a group is selected
+  const filteredEntities = entities.filter((e) => {
+    const [domain] = e.entity_id.split('.');
+
+    // Room / Area Group Filter
+    if (currentUser?.role === 'user') {
+      // Must belong to one of user's allowed rooms
+      const isAllowedForUser = visibleGroups.some((g) => g.entityIds.includes(e.entity_id));
+      if (!isAllowedForUser) return false;
+    }
+    if (activeGroup && !activeGroup.entityIds.includes(e.entity_id)) {
+      return false;
+    }
+
+    // Domain filter bar
+    if (selectedDomain !== 'all') {
+      if (domain !== selectedDomain) return false;
+      if (domain === 'switch' && isAirconSubSwitch(e.entity_id)) return false;
+      if (isHighImpact(e.entity_id, e.attributes.device_class)) return false;
+    } else {
+      if (!ACTIONABLE_DOMAINS.includes(domain)) return false;
+      if (domain === 'climate') return false; // Rendered in dedicated Climate section
+      if (isAirconSubSwitch(e.entity_id)) return false; // Handled under its respective AC card
+      if (isHighImpact(e.entity_id, e.attributes.device_class)) return false;
+    }
+
+    // Hide unavailable devices unless explicitly toggled
+    if (!showUnavailable && (e.state === 'unavailable' || e.state === 'unknown')) {
+      return false;
+    }
+
+    // Hide if user marked as hidden (unless currently in Manage Mode)
+    if (!isManageMode && hiddenEntities.includes(e.entity_id)) {
+      return false;
+    }
+
+    return true;
+  });
+
+  const activeDeviceCount = entities.filter((e) => {
+    const [domain] = e.entity_id.split('.');
+    return ACTIONABLE_DOMAINS.includes(domain) && (e.state === 'on' || e.state === 'open' || e.state === 'unlocked' || (domain === 'climate' && e.state !== 'off'));
+  }).length;
+
+  // Security controllable entities (Locks, Garages, Alarms, Guard mode)
+  const securityControls = entities.filter((e) =>
     isHighImpact(e.entity_id, e.attributes.device_class)
   );
 
+  // Security perimeter sensors (Doors, Windows, Motion sensors)
+  const securitySensors = entities.filter((e) => isSecuritySensor(e));
+
+  // Video feed cameras
+  const cameraEntities = entities.filter((e) => e.entity_id.startsWith('camera.'));
+
+  const hasSecurityDevices = securityControls.length > 0 || securitySensors.length > 0 || cameraEntities.length > 0;
+
+  // Auto-redirect to home if currently on security tab but no security devices exist
+  useEffect(() => {
+    if (currentTab === 'security' && !hasSecurityDevices && entities.length > 0) {
+      handleSelectTab('home');
+    }
+  }, [currentTab, hasSecurityDevices, entities.length]);
+
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-[#0a0d14] text-slate-100">
+    <div className="flex h-screen w-screen overflow-hidden text-slate-800">
       {/* Persistent Left Sidebar */}
       <Sidebar
         currentTab={currentTab}
-        onSelectTab={setCurrentTab}
+        onSelectTab={handleSelectTab}
         groceryCount={groceries.length}
         upcomingCount={schedule.length}
+        showSecurityTab={hasSecurityDevices}
       />
 
       {/* Main View Area */}
@@ -210,28 +684,139 @@ export const App: React.FC = () => {
           onManualRefresh={handleRefreshAll}
           isRefreshing={isRefreshing}
           activeCount={activeDeviceCount}
+          currentUser={currentUser}
+          onSwitchProfile={() => setIsLoginModalOpen(true)}
+          onOpenUserManager={() => setIsUserManagerOpen(true)}
         />
 
-        <main className="flex-1 overflow-y-auto p-8 no-scrollbar">
+        <main className="flex-1 overflow-y-auto p-4 sm:p-6 no-scrollbar">
           {/* TAB 1: HOME CONTROLS */}
           {currentTab === 'home' && (
-            <div className="space-y-6">
-              {/* Domain Filter Pills */}
-              <div className="flex items-center gap-3 overflow-x-auto pb-2 no-scrollbar">
+            <div className="space-y-4">
+              {/* Room & Custom Group Filter Pills */}
+              <div className="flex items-center justify-between gap-3 overflow-x-auto pb-1 no-scrollbar">
+                <div className="flex items-center gap-2.5">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mr-1 flex items-center gap-1.5 shrink-0">
+                    <Layers className="w-4 h-4 text-indigo-500" /> Rooms:
+                  </span>
+                  
+                  {(!currentUser || currentUser.role === 'admin') && (
+                    <button
+                      onClick={() => setSelectedGroupId('all')}
+                      className={`h-11 px-5 rounded-2xl text-xs font-bold transition-all duration-300 cursor-pointer active:scale-95 shadow-xs border shrink-0 ${
+                        selectedGroupId === 'all'
+                          ? 'bg-slate-900 text-white border-transparent font-black shadow-md'
+                          : 'bg-white/90 hover:bg-white text-slate-600 border-white/90'
+                      }`}
+                    >
+                      All Areas
+                    </button>
+                  )}
+
+                  {visibleGroups.map((group) => (
+                    <div key={group.id} className="relative shrink-0 flex items-center">
+                      <button
+                        onClick={() => setSelectedGroupId(group.id)}
+                        className={`h-11 px-5 rounded-2xl text-xs font-bold transition-all duration-300 cursor-pointer active:scale-95 shadow-xs border ${
+                          selectedGroupId === group.id
+                            ? 'bg-indigo-600 text-white border-indigo-600 shadow-sm font-black scale-102'
+                            : 'bg-white/90 hover:bg-white text-slate-700 border-white/90'
+                        }`}
+                      >
+                        {group.name}
+                        <span className={`ml-2 text-[10px] font-mono px-2 py-0.5 rounded-full ${
+                          selectedGroupId === group.id ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-500'
+                        }`}>
+                          {group.entityIds.length}
+                        </span>
+                      </button>
+
+                      {/* Room Edit Gear ONLY appears when admin explicitly taps 'Customize & Rename' */}
+                      {isManageMode && currentUser?.role === 'admin' && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setGroupToEdit(group);
+                            setIsGroupModalOpen(true);
+                          }}
+                          title={`Edit ${group.name}`}
+                          className="ml-1 px-2.5 h-11 rounded-2xl bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-300 flex items-center gap-1 cursor-pointer transition shadow-xs"
+                        >
+                          <span className="text-[11px] font-bold">⚙ Edit</span>
+                        </button>
+                      )}
+                    </div>
+                  ))}
+
+                  {/* New Room button is guarded in manage mode for admins */}
+                  {isManageMode && currentUser?.role === 'admin' && (
+                    <button
+                      onClick={() => {
+                        setGroupToEdit(null);
+                        setIsGroupModalOpen(true);
+                      }}
+                      className="h-11 px-4 rounded-2xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer bg-indigo-50/80 hover:bg-indigo-100 text-indigo-700 border border-indigo-200/80 shadow-xs shrink-0"
+                    >
+                      <Plus className="w-4 h-4" />
+                      <span>Add Room</span>
+                    </button>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-2.5 shrink-0">
+                  <button
+                    onClick={() => setShowUnavailable(!showUnavailable)}
+                    className={`h-11 px-4 rounded-2xl text-xs font-bold transition flex items-center gap-2 cursor-pointer shadow-xs border ${
+                      showUnavailable
+                        ? 'bg-indigo-50 text-indigo-700 border-indigo-200'
+                        : 'bg-white/80 text-slate-500 hover:text-slate-800 border-white/90'
+                    }`}
+                  >
+                    <span>{showUnavailable ? 'Showing All' : 'Hiding Inactive'}</span>
+                  </button>
+
+                  {/* Only admins can toggle Manage / Rename mode */}
+                  {(!currentUser || currentUser.role === 'admin') && (
+                    <button
+                      onClick={() => setIsManageMode(!isManageMode)}
+                      className={`h-11 px-4 rounded-2xl text-xs font-bold transition flex items-center gap-2 cursor-pointer shadow-xs border ${
+                        isManageMode
+                          ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white font-black border-transparent shadow-amber-500/25 ring-2 ring-amber-300'
+                          : 'bg-white/80 hover:bg-white text-slate-700 border-white/90'
+                      }`}
+                    >
+                      <span>{isManageMode ? 'Done Editing' : 'Customize & Rename'}</span>
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Domain Filter Pills Bar */}
+              <div className="flex items-center gap-2.5 overflow-x-auto pb-1 no-scrollbar">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mr-1 shrink-0">
+                  Filter:
+                </span>
                 {['all', 'light', 'switch', 'climate', 'cover'].map((dom) => (
                   <button
                     key={dom}
                     onClick={() => setSelectedDomain(dom)}
-                    className={`h-12 px-6 rounded-2xl text-xs font-bold uppercase tracking-wider transition-all duration-200 cursor-pointer active:scale-95 ${
+                    className={`h-10 px-5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-300 cursor-pointer active:scale-95 shadow-xs border shrink-0 ${
                       selectedDomain === dom
-                        ? 'bg-amber-500 text-slate-950 shadow-lg shadow-amber-500/25 scale-102'
-                        : 'bg-[#141824] hover:bg-[#1a2030] text-slate-300 border border-slate-800'
+                        ? 'bg-slate-800 text-white border-transparent font-black shadow-xs'
+                        : 'bg-white/70 hover:bg-white text-slate-600 border-white/80'
                     }`}
                   >
                     {dom}
                   </button>
                 ))}
               </div>
+
+              {isManageMode && (
+                <div className="p-3.5 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 text-xs font-semibold flex items-center justify-between shadow-xs">
+                  <span><strong>Customize Mode Active:</strong> Tap the pencil (✎) on any device to rename it, or tap the badge to hide/unhide. Device toggles are safely paused.</span>
+                  <span className="font-mono font-bold text-amber-700 bg-amber-100 px-2.5 py-1 rounded-lg shrink-0 ml-3">{hiddenEntities.length} hidden</span>
+                </div>
+              )}
 
               {/* Status warning pill if HA is offline */}
               {haError && (
@@ -241,21 +826,80 @@ export const App: React.FC = () => {
                 </div>
               )}
 
-              {/* Entities Grid */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-                {filteredEntities.map((entity) => (
-                  <EntityCard
-                    key={entity.entity_id}
-                    entity={entity}
-                    onAction={handleEntityAction}
-                    isLoading={loadingEntityId === entity.entity_id}
-                  />
-                ))}
+              {/* LANDSCAPE 2-COLUMN VIEW (Optimized for widescreen tablets) */}
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+                {/* COLUMN 1: CLIMATE & AIR CONDITIONING (Left column ~5/12 width or full if only climate selected) */}
+                {(selectedDomain === 'all' || selectedDomain === 'climate') && displayClimateEntities.length > 0 && (
+                  <div className={`${selectedDomain === 'climate' ? 'lg:col-span-12' : 'lg:col-span-5'} space-y-3`}>
+                    <div className="flex items-center justify-between pb-1 border-b border-slate-200/50">
+                      <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                        Climate & Aircons ({displayClimateEntities.filter(c => c.state !== 'unavailable').length} on)
+                      </h3>
+                    </div>
+                    <div className="flex flex-col gap-3.5">
+                      {displayClimateEntities.map((climate) => (
+                        <ClimateUnitCard
+                          key={climate.entity_id}
+                          climateEntity={climate}
+                          customName={customNames[climate.entity_id]}
+                          subSwitches={getSubSwitchesForClimate(climate)}
+                          onAction={(entity, domain, service, serviceData) =>
+                            executeServiceCallWithData(entity, domain, service, serviceData)
+                          }
+                          onRename={isManageMode ? (entity) => setRenamingEntity(entity) : undefined}
+                          isLoading={loadingEntityId === climate.entity_id}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                )}
 
-                {filteredEntities.length === 0 && !haError && (
-                  <div className="col-span-full h-64 flex flex-col items-center justify-center border-2 border-dashed border-slate-800 rounded-3xl text-slate-400">
-                    <Sparkles className="w-10 h-10 mb-2 opacity-30" />
-                    <p className="text-sm font-semibold">No devices found in this filter category</p>
+                {/* COLUMN 2: SWITCHES, LIGHTS & OUTLETS (Right column ~7/12 width or full if only switches selected) */}
+                {(selectedDomain === 'all' || selectedDomain !== 'climate') && (
+                  <div className={`${displayClimateEntities.length === 0 || selectedDomain !== 'all' ? 'lg:col-span-12' : 'lg:col-span-7'} space-y-3`}>
+                    <div className="flex items-center justify-between pb-1 border-b border-slate-200/50">
+                      <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                        Room Switches & Lights ({filteredEntities.length})
+                      </h3>
+                    </div>
+
+                    <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3">
+                      {filteredEntities.map((entity) => {
+                        const isHidden = hiddenEntities.includes(entity.entity_id);
+                        return (
+                          <div key={entity.entity_id} className="relative">
+                            {isManageMode && (
+                              <button
+                                onClick={() => toggleHideEntity(entity.entity_id)}
+                                className={`absolute -top-2 -right-2 z-20 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider cursor-pointer shadow-lg transition ${
+                                  isHidden
+                                    ? 'bg-red-500 text-white'
+                                    : 'bg-emerald-500 text-slate-950'
+                                }`}
+                              >
+                                {isHidden ? 'Hidden' : 'Visible'}
+                              </button>
+                            )}
+                            <div className={isManageMode && isHidden ? 'opacity-30' : ''}>
+                              <EntityCard
+                                entity={entity}
+                                customName={customNames[entity.entity_id]}
+                                onAction={isManageMode ? () => toggleHideEntity(entity.entity_id) : handleEntityAction}
+                                onRename={isManageMode ? (entity) => setRenamingEntity(entity) : undefined}
+                                isLoading={loadingEntityId === entity.entity_id}
+                              />
+                            </div>
+                          </div>
+                        );
+                      })}
+
+                      {filteredEntities.length === 0 && !haError && (
+                        <div className="col-span-full h-48 flex flex-col items-center justify-center border-2 border-dashed border-slate-200 rounded-2xl text-slate-400">
+                          <Sparkles className="w-8 h-8 mb-2 opacity-30" />
+                          <p className="text-xs font-semibold">No devices in this area or filter</p>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 )}
               </div>
@@ -264,164 +908,184 @@ export const App: React.FC = () => {
 
           {/* TAB 2: SECURITY & PERIMETER */}
           {currentTab === 'security' && (
-            <div className="space-y-6 max-w-5xl mx-auto">
+            <div className="space-y-8 max-w-5xl mx-auto">
               <div>
-                <h2 className="text-2xl font-black tracking-tight text-white flex items-center gap-3">
-                  <ShieldCheck className="w-8 h-8 text-emerald-400" />
+                <h2 className="text-2xl font-black tracking-tight text-slate-800 flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-emerald-500 to-teal-500 flex items-center justify-center text-white shadow-sm">
+                    <ShieldCheck className="w-5 h-5" />
+                  </div>
                   Security & Perimeter Center
                 </h2>
-                <p className="text-xs text-slate-400 mt-1">
-                  Protected high-impact home controls. Action confirmation is required on physical toggles.
+                <p className="text-[11px] font-semibold text-slate-400 mt-0.5">
+                  Live camera video streams, perimeter sensors, and protected high-impact controls with safety confirmation.
                 </p>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {securityEntities.map((entity) => (
-                  <EntityCard
-                    key={entity.entity_id}
-                    entity={entity}
-                    onAction={handleEntityAction}
-                    isLoading={loadingEntityId === entity.entity_id}
-                  />
-                ))}
-
-                {securityEntities.length === 0 && (
-                  <div className="col-span-full h-64 flex flex-col items-center justify-center border border-slate-800 rounded-3xl bg-[#141824] p-8 text-center">
-                    <ShieldCheck className="w-12 h-12 text-emerald-400 mb-3" />
-                    <h3 className="text-lg font-bold text-white">All Perimeters Normal</h3>
-                    <p className="text-xs text-slate-400 mt-1 max-w-md">
-                      No security doors or alarm entities require attention or manual confirmation.
-                    </p>
+              {/* SECTION 1: Live Security Camera Video Feeds */}
+              {cameraEntities.length > 0 && (
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-sm font-extrabold uppercase tracking-wider text-slate-500 flex items-center gap-2">
+                      <Camera className="w-4 h-4 text-indigo-600" />
+                      Live Camera Feeds ({cameraEntities.length})
+                    </h3>
                   </div>
-                )}
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {cameraEntities.map((camera) => (
+                      <CameraFeedCard
+                        key={camera.entity_id}
+                        camera={camera}
+                        customName={customNames[camera.entity_id]}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* SECTION 2: Perimeter Sensor Status Grid */}
+              {securitySensors.length > 0 && (
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-sm font-extrabold uppercase tracking-wider text-slate-500 flex items-center gap-2">
+                      <Radio className="w-4 h-4 text-emerald-500" />
+                      Perimeter & Motion Sensors ({securitySensors.length})
+                    </h3>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3.5">
+                    {securitySensors.map((sensor) => {
+                      const isDoor =
+                        sensor.attributes.device_class === 'door' ||
+                        sensor.entity_id.includes('contact_state') ||
+                        (sensor.attributes.friendly_name || '').toLowerCase().includes('door');
+                      const isMotion =
+                        sensor.attributes.device_class === 'motion' ||
+                        sensor.entity_id.includes('motion') ||
+                        (sensor.attributes.friendly_name || '').toLowerCase().includes('motion');
+
+                      // For contact sensors: 'on' = Open, 'off' = Closed
+                      // For motion sensors: 'on' = Detected, 'off' = Clear
+                      const isOpen = isDoor && sensor.state === 'on';
+                      const isClosed = isDoor && sensor.state === 'off';
+                      const isMotionActive = isMotion && sensor.state === 'on';
+
+                      const rawName =
+                        customNames[sensor.entity_id] ||
+                        sensor.attributes.friendly_name
+                          ?.replace(/Magnet Sensor Contact State/i, '')
+                          ?.replace(/Motion Sensor Motion State/i, '')
+                          ?.trim() ||
+                        sensor.entity_id;
+
+                      return (
+                        <div
+                          key={sensor.entity_id}
+                          className={`p-4 rounded-2xl glass-card border transition-all flex items-center justify-between ${
+                            isOpen || isMotionActive
+                              ? 'bg-amber-500/10 border-amber-300 ring-2 ring-amber-400/30'
+                              : 'border-white/80 bg-white/70'
+                          }`}
+                        >
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div
+                              className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
+                                isOpen || isMotionActive
+                                  ? 'bg-amber-100 text-amber-700'
+                                  : 'bg-emerald-50 text-emerald-600'
+                              }`}
+                            >
+                              {isDoor ? (
+                                isOpen ? <DoorOpen className="w-5 h-5 text-amber-600" /> : <DoorClosed className="w-5 h-5 text-emerald-600" />
+                              ) : isMotion ? (
+                                <Activity className={`w-5 h-5 ${isMotionActive ? 'text-amber-600 animate-pulse' : 'text-slate-400'}`} />
+                              ) : (
+                                <Radio className="w-5 h-5 text-emerald-600" />
+                              )}
+                            </div>
+                            <div className="min-w-0">
+                              <h4 className="text-xs font-black text-slate-800 truncate" title={rawName}>
+                                {rawName}
+                              </h4>
+                              <p className="text-[10px] font-semibold text-slate-400 capitalize">
+                                {isDoor ? 'Contact Sensor' : isMotion ? 'Motion Detector' : 'Perimeter Sensor'}
+                              </p>
+                            </div>
+                          </div>
+
+                          <div
+                            className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider shrink-0 shadow-2xs ${
+                              isOpen
+                                ? 'bg-amber-500 text-white'
+                                : isMotionActive
+                                ? 'bg-amber-500 text-white'
+                                : 'bg-emerald-500 text-white'
+                            }`}
+                          >
+                            {isDoor ? (isOpen ? 'Open' : 'Closed') : isMotion ? (isMotionActive ? 'Motion' : 'Clear') : sensor.state}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* SECTION B: Protected Controls (Alarms, Guard Mode, Locks) */}
+              <div className="space-y-3">
+                <h3 className="text-sm font-extrabold uppercase tracking-wider text-slate-500 flex items-center gap-2">
+                  <Shield className="w-4 h-4 text-indigo-500" />
+                  Protected Controls ({securityControls.length})
+                </h3>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {securityControls.map((entity) => (
+                    <EntityCard
+                      key={entity.entity_id}
+                      entity={entity}
+                      customName={
+                        customNames[entity.entity_id] ||
+                        (entity.entity_id.includes('guard_mode')
+                          ? 'Mi Hub Gateway Guard Mode'
+                          : entity.entity_id.includes('alarm_p_3_1')
+                          ? 'Mi Hub Alarm Siren'
+                          : undefined)
+                      }
+                      onAction={handleEntityAction}
+                      onRename={(entity) => setRenamingEntity(entity)}
+                      isLoading={loadingEntityId === entity.entity_id}
+                    />
+                  ))}
+
+                  {securityControls.length === 0 && (
+                    <div className="col-span-full h-36 flex flex-col items-center justify-center rounded-2xl glass-panel p-6 text-center">
+                      <ShieldCheck className="w-8 h-8 text-emerald-500 mb-1 opacity-70" />
+                      <h4 className="text-sm font-extrabold text-slate-800">No Protected Switches</h4>
+                      <p className="text-[11px] text-slate-400 mt-0.5">
+                        No physical locks or siren switches require manual confirmation.
+                      </p>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           )}
 
-          {/* TAB 3: SCHEDULE & ROUTINES */}
+          {/* TAB 3: SCHEDULE & CALENDAR */}
           {currentTab === 'schedule' && (
-            <div className="space-y-6 max-w-5xl mx-auto">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="text-2xl font-black tracking-tight text-white flex items-center gap-3">
-                    <CalendarIcon className="w-8 h-8 text-amber-400" />
-                    Today's Schedule & Family Tasks
-                  </h2>
-                  <p className="text-xs text-slate-400 mt-1">
-                    Unified calendar and tasks from the shared household Google account.
-                  </p>
-                </div>
-              </div>
-
-              {scheduleError && (
-                <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-300 flex items-center gap-3">
-                  <AlertCircle className="w-5 h-5 shrink-0" />
-                  <span className="text-sm font-semibold">{scheduleError}</span>
-                </div>
-              )}
-
-              <div className="space-y-4">
-                {schedule.map((item) => (
-                  <div
-                    key={item.id}
-                    className="p-5 rounded-3xl bg-[#141824] border border-slate-800/80 flex items-center justify-between hover:border-slate-700 transition"
-                  >
-                    <div className="flex items-center gap-4">
-                      <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${
-                        item.type === 'calendar' ? 'bg-blue-500/15 text-blue-400' : 'bg-amber-500/15 text-amber-400'
-                      }`}>
-                        {item.type === 'calendar' ? <CalendarIcon className="w-6 h-6" /> : <CheckSquare className="w-6 h-6" />}
-                      </div>
-                      <div>
-                        <h4 className="text-lg font-bold text-white tracking-tight">{item.title}</h4>
-                        <div className="text-xs text-slate-400 flex items-center gap-3 mt-1">
-                          <span className="capitalize font-semibold">{item.type}</span>
-                          {item.listName && <span>• {item.listName}</span>}
-                          {item.startTime && <span>• {new Date(item.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>}
-                          {item.dueDate && <span>• Due {new Date(item.dueDate).toLocaleDateString()}</span>}
-                        </div>
-                      </div>
-                    </div>
-
-                    <span className="px-3 py-1.5 rounded-xl bg-slate-800 text-[11px] font-bold text-slate-300 uppercase tracking-wider">
-                      {item.isAllDay ? 'All Day' : 'Scheduled'}
-                    </span>
-                  </div>
-                ))}
-
-                {schedule.length === 0 && !scheduleError && (
-                  <div className="h-64 flex flex-col items-center justify-center border border-slate-800 rounded-3xl bg-[#141824] text-slate-400">
-                    <CheckCircle2 className="w-10 h-10 text-emerald-400 mb-2" />
-                    <p className="text-base font-bold text-white">All Clear for Today</p>
-                    <p className="text-xs text-slate-400 mt-1">No pending calendar events or active reminders.</p>
-                  </div>
-                )}
-              </div>
-            </div>
+            <ScheduleView
+              schedule={schedule}
+              error={scheduleError}
+              onRefresh={fetchSchedule}
+              viewMode={scheduleViewMode}
+              filterType={scheduleFilterType}
+              onViewChange={handleScheduleRouteStateChange}
+            />
           )}
 
           {/* TAB 4: GROCERY LIST */}
           {currentTab === 'groceries' && (
-            <div className="space-y-6 max-w-5xl mx-auto">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="text-2xl font-black tracking-tight text-white flex items-center gap-3">
-                    <ShoppingCart className="w-8 h-8 text-amber-400" />
-                    CartSync Grocery List
-                  </h2>
-                  <p className="text-xs text-slate-400 mt-1">
-                    Live household items synced with CartSync (Read-only on dashboard).
-                  </p>
-                </div>
-                <div className="px-4 py-2 rounded-2xl bg-amber-500/15 border border-amber-500/30 text-amber-300 text-xs font-bold">
-                  {groceries.length} {groceries.length === 1 ? 'Item' : 'Items'} Needed
-                </div>
-              </div>
-
-              {groceriesError && (
-                <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-300 flex items-center gap-3">
-                  <AlertCircle className="w-5 h-5 shrink-0" />
-                  <span className="text-sm font-semibold">{groceriesError}</span>
-                </div>
-              )}
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {groceries.map((item) => (
-                  <div
-                    key={item.id}
-                    className="p-5 rounded-3xl bg-[#141824] border border-slate-800/80 flex items-center justify-between hover:border-slate-700 transition"
-                  >
-                    <div className="flex items-center gap-4">
-                      <div className="w-7 h-7 rounded-lg border-2 border-slate-600 flex items-center justify-center text-transparent">
-                        ✓
-                      </div>
-                      <div>
-                        <h4 className="text-base font-bold text-white tracking-tight">{item.name}</h4>
-                        {item.category && (
-                          <span className="text-[11px] font-semibold text-slate-400 uppercase tracking-wider">
-                            {item.category}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-
-                    {item.quantity && (
-                      <span className="px-3.5 py-1 rounded-xl bg-slate-800 font-mono font-bold text-sm text-amber-300">
-                        {item.quantity} {item.unit || ''}
-                      </span>
-                    )}
-                  </div>
-                ))}
-
-                {groceries.length === 0 && !groceriesError && (
-                  <div className="col-span-full h-64 flex flex-col items-center justify-center border border-slate-800 rounded-3xl bg-[#141824] text-slate-400">
-                    <ShoppingCart className="w-10 h-10 text-emerald-400 mb-2 opacity-50" />
-                    <p className="text-base font-bold text-white">Pantry is Stocked</p>
-                    <p className="text-xs text-slate-400 mt-1">No items currently on the household grocery list.</p>
-                  </div>
-                )}
-              </div>
-            </div>
+            <GroceryView groceries={groceries} error={groceriesError} />
           )}
         </main>
       </div>
@@ -439,6 +1103,87 @@ export const App: React.FC = () => {
         onConfirm={handleConfirmModal}
         isLoading={isExecutingAction}
       />
+
+      {/* Device Rename Modal */}
+      {renamingEntity && (
+        <RenameModal
+          isOpen={!!renamingEntity}
+          entityId={renamingEntity.entity_id}
+          currentName={
+            customNames[renamingEntity.entity_id] ||
+            renamingEntity.attributes.friendly_name?.replace(/\(.*?\) Climate/i, '')?.replace(/ Climate/i, '')?.trim() ||
+            renamingEntity.entity_id
+          }
+          defaultName={
+            renamingEntity.attributes.friendly_name?.replace(/\(.*?\) Climate/i, '')?.replace(/ Climate/i, '')?.trim() ||
+            renamingEntity.entity_id
+          }
+          onSave={handleSaveCustomName}
+          onReset={handleResetCustomName}
+          onClose={() => setRenamingEntity(null)}
+        />
+      )}
+
+      {/* Room / Device Group Modal */}
+      {isGroupModalOpen && (
+        <GroupModal
+          isOpen={isGroupModalOpen}
+          availableEntities={entities.filter((e) => {
+            const [domain] = e.entity_id.split('.');
+            if (!ACTIONABLE_DOMAINS.includes(domain)) return false;
+            if (isAirconSubSwitch(e.entity_id)) return false;
+            return true;
+          })}
+          customNames={customNames}
+          groupToEdit={groupToEdit}
+          onSave={handleSaveGroup}
+          onDelete={handleDeleteGroup}
+          onClose={() => {
+            setIsGroupModalOpen(false);
+            setGroupToEdit(null);
+          }}
+        />
+      )}
+
+      {/* User Login & Profile Switcher Modal */}
+      <ProfileLoginModal
+        isOpen={isLoginModalOpen || !currentUser}
+        users={users}
+        canClose={!!currentUser}
+        onLoginSuccess={(user) => {
+          setCurrentUser(user);
+          try {
+            localStorage.setItem('casacontrol_current_user', JSON.stringify(user));
+          } catch {}
+          setIsLoginModalOpen(false);
+        }}
+        onClose={() => setIsLoginModalOpen(false)}
+      />
+
+      {/* Admin User & Room Management Modal */}
+      {isUserManagerOpen && (
+        <UserManagementModal
+          isOpen={isUserManagerOpen}
+          users={users}
+          deviceGroups={deviceGroups}
+          onClose={() => setIsUserManagerOpen(false)}
+          onSaveUsers={async (updatedUsers) => {
+            setUsers(updatedUsers);
+            await syncSettingsToServer({ users: updatedUsers } as any);
+            // Refresh current user if updated
+            if (currentUser) {
+              const fresh = updatedUsers.find((u) => u.id === currentUser.id);
+              if (fresh) {
+                const updatedCurrent = { ...currentUser, ...fresh };
+                setCurrentUser(updatedCurrent);
+                try {
+                  localStorage.setItem('casacontrol_current_user', JSON.stringify(updatedCurrent));
+                } catch {}
+              }
+            }
+          }}
+        />
+      )}
     </div>
   );
 };

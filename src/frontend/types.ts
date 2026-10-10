@@ -19,6 +19,15 @@ export interface ScheduleItem {
   id: string;
   type: 'calendar' | 'task';
   title: string;
+  start: string;
+  end?: string;
+  allDay: boolean;
+  location?: string;
+  description?: string;
+  status?: string;
+  source?: string;
+  link?: string;
+  // Legacy optional aliases for backwards compatibility
   startTime?: string;
   endTime?: string;
   dueDate?: string;
@@ -34,3 +43,19 @@ export interface GroceryItem {
   category?: string;
   completed: boolean;
 }
+
+export interface DeviceGroup {
+  id: string;
+  name: string;
+  entityIds: string[];
+}
+
+export interface UserProfile {
+  id: string;
+  name: string;
+  role: 'admin' | 'user';
+  pin?: string;
+  allowedGroupIds: string[];
+  hasPin?: boolean;
+}
+

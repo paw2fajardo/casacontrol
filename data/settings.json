@@ -1,0 +1,33 @@
+{
+  "users": [
+    {
+      "id": "user_admin",
+      "name": "Admin",
+      "role": "admin",
+      "pin": "1234",
+      "allowedGroupIds": []
+    },
+    {
+      "id": "user_1791622658245",
+      "name": "Fajardo",
+      "role": "user",
+      "hasPin": true,
+      "allowedGroupIds": [
+        "kitchen_zone"
+      ]
+    }
+  ],
+  "deviceGroups": [
+    {
+      "id": "kitchen_zone",
+      "name": "Kitchen",
+      "entityIds": [
+        "switch.kitchen"
+      ]
+    }
+  ],
+  "customNames": {
+    "switch.kitchen": "Pantry Light"
+  },
+  "hiddenEntities": []
+}

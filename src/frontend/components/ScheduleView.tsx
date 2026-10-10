@@ -345,12 +345,26 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({ schedule, error, onR
         <div className="grid grid-cols-1 md:grid-cols-3 gap-5 flex-1 min-h-[580px]">
           {rollingDays.map((col, idx) => {
             const isToday = idx === 0;
+            const hasItems = col.items.length > 0;
+            const hasEvents = col.items.some((i) => i.type === 'calendar');
+            const hasTasks = col.items.some((i) => i.type === 'task');
+
+            // Subtle, calm tint reflecting schedule presence
+            let cardBg = 'bg-white/85 border-white/90';
+            if (isToday) {
+              cardBg = 'border-indigo-300 bg-white/95 ring-2 ring-indigo-500/20';
+            } else if (hasEvents && hasTasks) {
+              cardBg = 'bg-gradient-to-b from-indigo-50/40 via-white/90 to-amber-50/30 border-indigo-100/80 shadow-xs';
+            } else if (hasEvents) {
+              cardBg = 'bg-indigo-50/30 border-indigo-100/70 shadow-xs';
+            } else if (hasTasks) {
+              cardBg = 'bg-amber-50/30 border-amber-100/70 shadow-xs';
+            }
+
             return (
               <div
                 key={col.dateKey}
-                className={`glass-card rounded-3xl p-5 border shadow-sm flex flex-col ${
-                  isToday ? 'border-indigo-300 bg-white/95 ring-2 ring-indigo-500/20' : 'border-white/90 bg-white/85'
-                }`}
+                className={`glass-card rounded-3xl p-5 border shadow-sm flex flex-col transition-all duration-300 ${cardBg}`}
               >
                 {/* Day Column Header */}
                 <div className="flex items-center justify-between pb-3.5 mb-3 border-b border-slate-100">
@@ -507,6 +521,21 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({ schedule, error, onR
                 const eventCount = cellItems.filter((i) => i.type === 'calendar').length;
                 const taskCount = cellItems.filter((i) => i.type === 'task').length;
 
+                const hasEvents = eventCount > 0;
+                const hasTasks = taskCount > 0;
+
+                // Subtle tint when date has events or tasks (unselected state)
+                let cellStyle = 'bg-white/70 hover:bg-white border-white/80 text-slate-700';
+                if (!cell.isCurrentMonth) {
+                  cellStyle = 'bg-slate-100/40 border-transparent text-slate-300 hover:bg-slate-100/70';
+                } else if (hasEvents && hasTasks) {
+                  cellStyle = 'bg-gradient-to-br from-indigo-50/50 to-amber-50/40 border-indigo-200/80 hover:bg-indigo-50/80 text-slate-800 shadow-2xs';
+                } else if (hasEvents) {
+                  cellStyle = 'bg-indigo-50/40 border-indigo-200/70 hover:bg-indigo-50/70 text-slate-800 shadow-2xs';
+                } else if (hasTasks) {
+                  cellStyle = 'bg-amber-50/40 border-amber-200/70 hover:bg-amber-50/70 text-slate-800 shadow-2xs';
+                }
+
                 return (
                   <button
                     key={cell.dateKey}
@@ -515,10 +544,8 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({ schedule, error, onR
                       isSelected
                         ? 'bg-indigo-600 text-white border-indigo-600 shadow-md scale-[1.02] z-10'
                         : isToday
-                        ? 'bg-indigo-50 border-indigo-300 ring-2 ring-indigo-400 text-slate-800'
-                        : cell.isCurrentMonth
-                        ? 'bg-white/70 hover:bg-white border-white/80 text-slate-700'
-                        : 'bg-slate-100/40 border-transparent text-slate-300 hover:bg-slate-100/70'
+                        ? 'bg-indigo-50/90 border-indigo-300 ring-2 ring-indigo-400 text-slate-800'
+                        : cellStyle
                     }`}
                   >
                     <div className="flex items-center justify-between w-full">

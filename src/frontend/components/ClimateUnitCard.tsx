@@ -153,30 +153,39 @@ export const ClimateUnitCard: React.FC<ClimateUnitProps> = ({
           </button>
 
           {isExpanded && (
-            <div className="px-6 pb-6 pt-2 grid grid-cols-2 md:grid-cols-3 gap-3">
+            <div className="px-6 pb-6 pt-2 grid grid-cols-1 sm:grid-cols-2 gap-2.5">
               {subSwitches.map((sw) => {
                 const swIsOn = sw.state === 'on';
-                const label = sw.attributes.friendly_name
-                  ?.replace(/Master's Bedroom AC \([^)]+\)/i, '')
-                  ?.replace(/Kuya's AC \([^)]+\)/i, '')
-                  ?.replace(/Girls Ac \([^)]+\)/i, '')
-                  ?.replace(/Living room aircon/i, '')
-                  ?.replace(/Switch/i, '')
-                  ?.trim() || sw.entity_id;
+                let label = sw.attributes.friendly_name || sw.entity_id;
+                // Strip redundant brand / hardware suffixes
+                label = label
+                  .replace(/Master's Bedroom AC/i, '')
+                  .replace(/Kuya's AC/i, '')
+                  .replace(/Girls Ac/i, '')
+                  .replace(/Living room aircon/i, '')
+                  .replace(/\([^)]*\)/g, '')
+                  .replace(/Switch/gi, '')
+                  .replace(/_/g, ' ')
+                  .trim();
+
+                // Capitalize nicely
+                label = label.charAt(0).toUpperCase() + label.slice(1);
 
                 return (
                   <button
                     key={sw.entity_id}
                     onClick={() => onAction(sw, 'switch', 'toggle')}
-                    className={`px-3 py-2.5 rounded-xl border text-left transition-all active:scale-95 cursor-pointer flex items-center justify-between ${
+                    className={`min-h-[46px] px-3.5 py-2.5 rounded-xl border text-left transition-all active:scale-95 cursor-pointer flex items-center justify-between gap-3 ${
                       swIsOn
-                        ? 'bg-indigo-50/90 border-indigo-200 text-indigo-900 font-semibold shadow-xs'
-                        : 'bg-white/80 border-slate-200/80 text-slate-600 hover:bg-white'
+                        ? 'bg-indigo-50/90 border-indigo-200 text-indigo-950 font-semibold shadow-xs'
+                        : 'bg-white/80 border-slate-200/80 text-slate-700 hover:bg-white'
                     }`}
                   >
-                    <span className="text-xs font-semibold truncate mr-2" title={label}>{label}</span>
-                    <span className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-md shrink-0 ${
-                      swIsOn ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-500'
+                    <span className="text-xs font-semibold leading-tight text-slate-800 break-words flex-1">
+                      {label}
+                    </span>
+                    <span className={`text-[10px] font-bold uppercase px-2.5 py-1 rounded-md shrink-0 ${
+                      swIsOn ? 'bg-indigo-600 text-white shadow-xs' : 'bg-slate-100 text-slate-500'
                     }`}>
                       {sw.state}
                     </span>

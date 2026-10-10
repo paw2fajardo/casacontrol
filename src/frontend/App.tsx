@@ -648,79 +648,83 @@ export const App: React.FC = () => {
                 </div>
               )}
 
-              {/* SECTION: CLIMATE & AIR CONDITIONING (Grouped Units) */}
-              {(selectedDomain === 'all' || selectedDomain === 'climate') && displayClimateEntities.length > 0 && (
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">
-                      Air Conditioning & Climate Units ({displayClimateEntities.filter(c => c.state !== 'unavailable').length} online)
-                    </h3>
-                  </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {displayClimateEntities.map((climate) => (
-                      <ClimateUnitCard
-                        key={climate.entity_id}
-                        climateEntity={climate}
-                        customName={customNames[climate.entity_id]}
-                        subSwitches={getSubSwitchesForClimate(climate)}
-                        onAction={(entity, domain, service, serviceData) =>
-                          executeServiceCallWithData(entity, domain, service, serviceData)
-                        }
-                        onRename={(entity) => setRenamingEntity(entity)}
-                        isLoading={loadingEntityId === climate.entity_id}
-                      />
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* SECTION: OTHER ROOM CONTROLS (Lights, Plugs, Switches) */}
-              {(selectedDomain === 'all' || selectedDomain !== 'climate') && (
-                <div className="space-y-3 pt-1">
-                  {selectedDomain === 'all' && (
-                    <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">
-                      Switches & Room Lights
-                    </h3>
-                  )}
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3.5">
-                {filteredEntities.map((entity) => {
-                  const isHidden = hiddenEntities.includes(entity.entity_id);
-                  return (
-                    <div key={entity.entity_id} className="relative">
-                      {isManageMode && (
-                        <button
-                          onClick={() => toggleHideEntity(entity.entity_id)}
-                          className={`absolute -top-2 -right-2 z-20 px-3 py-1.5 rounded-full text-[11px] font-black uppercase tracking-wider cursor-pointer shadow-lg transition ${
-                            isHidden
-                              ? 'bg-red-500 text-white'
-                              : 'bg-emerald-500 text-slate-950'
-                          }`}
-                        >
-                          {isHidden ? 'Hidden' : 'Visible'}
-                        </button>
-                      )}
-                      <div className={isManageMode && isHidden ? 'opacity-30' : ''}>
-                        <EntityCard
-                          entity={entity}
-                          customName={customNames[entity.entity_id]}
-                          onAction={isManageMode ? () => toggleHideEntity(entity.entity_id) : handleEntityAction}
-                          onRename={(entity) => setRenamingEntity(entity)}
-                          isLoading={loadingEntityId === entity.entity_id}
-                        />
-                      </div>
+              {/* LANDSCAPE 2-COLUMN VIEW (Optimized for widescreen tablets) */}
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+                {/* COLUMN 1: CLIMATE & AIR CONDITIONING (Left column ~5/12 width or full if only climate selected) */}
+                {(selectedDomain === 'all' || selectedDomain === 'climate') && displayClimateEntities.length > 0 && (
+                  <div className={`${selectedDomain === 'climate' ? 'lg:col-span-12' : 'lg:col-span-5'} space-y-3`}>
+                    <div className="flex items-center justify-between pb-1 border-b border-slate-200/50">
+                      <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                        Climate & Aircons ({displayClimateEntities.filter(c => c.state !== 'unavailable').length} on)
+                      </h3>
                     </div>
-                  );
-                })}
-
-                {filteredEntities.length === 0 && !haError && (
-                  <div className="col-span-full h-64 flex flex-col items-center justify-center border-2 border-dashed border-slate-800 rounded-3xl text-slate-400">
-                    <Sparkles className="w-10 h-10 mb-2 opacity-30" />
-                    <p className="text-sm font-semibold">No devices found in this filter category</p>
+                    <div className="flex flex-col gap-3.5">
+                      {displayClimateEntities.map((climate) => (
+                        <ClimateUnitCard
+                          key={climate.entity_id}
+                          climateEntity={climate}
+                          customName={customNames[climate.entity_id]}
+                          subSwitches={getSubSwitchesForClimate(climate)}
+                          onAction={(entity, domain, service, serviceData) =>
+                            executeServiceCallWithData(entity, domain, service, serviceData)
+                          }
+                          onRename={(entity) => setRenamingEntity(entity)}
+                          isLoading={loadingEntityId === climate.entity_id}
+                        />
+                      ))}
+                    </div>
                   </div>
                 )}
+
+                {/* COLUMN 2: SWITCHES, LIGHTS & OUTLETS (Right column ~7/12 width or full if only switches selected) */}
+                {(selectedDomain === 'all' || selectedDomain !== 'climate') && (
+                  <div className={`${displayClimateEntities.length === 0 || selectedDomain !== 'all' ? 'lg:col-span-12' : 'lg:col-span-7'} space-y-3`}>
+                    <div className="flex items-center justify-between pb-1 border-b border-slate-200/50">
+                      <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">
+                        Room Switches & Lights ({filteredEntities.length})
+                      </h3>
+                    </div>
+
+                    <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-4 gap-3">
+                      {filteredEntities.map((entity) => {
+                        const isHidden = hiddenEntities.includes(entity.entity_id);
+                        return (
+                          <div key={entity.entity_id} className="relative">
+                            {isManageMode && (
+                              <button
+                                onClick={() => toggleHideEntity(entity.entity_id)}
+                                className={`absolute -top-2 -right-2 z-20 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider cursor-pointer shadow-lg transition ${
+                                  isHidden
+                                    ? 'bg-red-500 text-white'
+                                    : 'bg-emerald-500 text-slate-950'
+                                }`}
+                              >
+                                {isHidden ? 'Hidden' : 'Visible'}
+                              </button>
+                            )}
+                            <div className={isManageMode && isHidden ? 'opacity-30' : ''}>
+                              <EntityCard
+                                entity={entity}
+                                customName={customNames[entity.entity_id]}
+                                onAction={isManageMode ? () => toggleHideEntity(entity.entity_id) : handleEntityAction}
+                                onRename={(entity) => setRenamingEntity(entity)}
+                                isLoading={loadingEntityId === entity.entity_id}
+                              />
+                            </div>
+                          </div>
+                        );
+                      })}
+
+                      {filteredEntities.length === 0 && !haError && (
+                        <div className="col-span-full h-48 flex flex-col items-center justify-center border-2 border-dashed border-slate-200 rounded-2xl text-slate-400">
+                          <Sparkles className="w-8 h-8 mb-2 opacity-30" />
+                          <p className="text-xs font-semibold">No devices in this area or filter</p>
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
+              </div>
             </div>
           )}
 

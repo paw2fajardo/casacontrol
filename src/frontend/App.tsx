@@ -5,8 +5,9 @@ import { EntityCard } from './components/EntityCard';
 import { ClimateUnitCard } from './components/ClimateUnitCard';
 import { ConfirmationModal } from './components/ConfirmationModal';
 import { RenameModal } from './components/RenameModal';
+import { GroupModal } from './components/GroupModal';
 import { GroceryView } from './components/GroceryView';
-import { HAEntityState, ScheduleItem, GroceryItem } from './types';
+import { HAEntityState, ScheduleItem, GroceryItem, DeviceGroup } from './types';
 import { 
   Calendar as CalendarIcon, 
   CheckSquare, 
@@ -19,7 +20,9 @@ import {
   ShoppingCart,
   CheckCircle2,
   Clock,
-  Sparkles
+  Sparkles,
+  Layers,
+  Plus
 } from 'lucide-react';
 
 export const App: React.FC = () => {
@@ -255,6 +258,70 @@ export const App: React.FC = () => {
     });
   };
 
+  // Persistent user customization: custom device groups / rooms (stored in localStorage)
+  const [deviceGroups, setDeviceGroups] = useState<DeviceGroup[]>(() => {
+    try {
+      const stored = localStorage.getItem('casacontrol_device_groups');
+      if (stored) return JSON.parse(stored);
+      // Sensible defaults based on known household areas
+      return [
+        {
+          id: 'group_master_bedroom',
+          name: "Master's Bedroom",
+          entityIds: [
+            'climate.master_s_bedroom_ac_czeozcvgaae_climate',
+            'switch.smartplug_p100_ashfan',
+          ],
+        },
+        {
+          id: 'group_kuyas_room',
+          name: "Kuya's Room",
+          entityIds: ['climate.kuya_s_ac_cmskusvgaae_climate'],
+        },
+        {
+          id: 'group_girls_room',
+          name: "Girls' Room",
+          entityIds: [
+            'climate.girls_ac_cmsi9yvgaai_climate',
+            'switch.p110_girls_bedroom',
+          ],
+        },
+      ];
+    } catch {
+      return [];
+    }
+  });
+
+  const [selectedGroupId, setSelectedGroupId] = useState<string>('all');
+  const [isGroupModalOpen, setIsGroupModalOpen] = useState<boolean>(false);
+  const [groupToEdit, setGroupToEdit] = useState<DeviceGroup | null>(null);
+
+  const handleSaveGroup = (group: DeviceGroup) => {
+    setDeviceGroups((prev) => {
+      const exists = prev.some((g) => g.id === group.id);
+      const updated = exists
+        ? prev.map((g) => (g.id === group.id ? group : g))
+        : [...prev, group];
+      try {
+        localStorage.setItem('casacontrol_device_groups', JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
+  };
+
+  const handleDeleteGroup = (groupId: string) => {
+    setDeviceGroups((prev) => {
+      const updated = prev.filter((g) => g.id !== groupId);
+      try {
+        localStorage.setItem('casacontrol_device_groups', JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
+    if (selectedGroupId === groupId) {
+      setSelectedGroupId('all');
+    }
+  };
+
   // Persistent user customization: pinned or hidden entities (stored in localStorage)
   const [hiddenEntities, setHiddenEntities] = useState<string[]>(() => {
     try {
@@ -325,13 +392,30 @@ export const App: React.FC = () => {
     );
   };
 
+  // Active selected room group
+  const activeGroup = selectedGroupId !== 'all' ? deviceGroups.find((g) => g.id === selectedGroupId) : null;
+
+  // Filtered climate entities
+  const displayClimateEntities = climateEntities.filter((c) => {
+    if (activeGroup && !activeGroup.entityIds.includes(c.entity_id)) {
+      return false;
+    }
+    return showUnavailable || c.state !== 'unavailable';
+  });
+
   // Filtered entities for Home tab:
   // 1. Must belong to actionable domain (light, switch, cover, fan)
   // 2. Hide sensors, persons, zones, sun, events, conversations
   // 3. Hide secondary aircon sub-switches (handled inside ClimateUnitCard)
   // 4. Hide unavailable devices unless explicitly toggled
+  // 5. Must match active room group if a group is selected
   const filteredEntities = entities.filter((e) => {
     const [domain] = e.entity_id.split('.');
+
+    // Room / Area Group Filter
+    if (activeGroup && !activeGroup.entityIds.includes(e.entity_id)) {
+      return false;
+    }
 
     // Domain filter bar
     if (selectedDomain !== 'all') {
@@ -389,28 +473,72 @@ export const App: React.FC = () => {
           {/* TAB 1: HOME CONTROLS */}
           {currentTab === 'home' && (
             <div className="space-y-6">
-              {/* Domain Filter Pills & Tablet Control Bar */}
-              <div className="flex items-center justify-between gap-4 overflow-x-auto pb-2 no-scrollbar">
-                <div className="flex items-center gap-3">
-                  {['all', 'light', 'switch', 'climate', 'cover'].map((dom) => (
-                    <button
-                      key={dom}
-                      onClick={() => setSelectedDomain(dom)}
-                      className={`h-12 px-6 rounded-2xl text-xs font-bold uppercase tracking-wider transition-all duration-300 cursor-pointer active:scale-95 shadow-sm border ${
-                        selectedDomain === dom
-                          ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white border-transparent shadow-indigo-500/25 scale-102 font-extrabold'
-                          : 'bg-white/80 hover:bg-white text-slate-600 border-white/90'
-                      }`}
-                    >
-                      {dom}
-                    </button>
+              {/* Room & Custom Group Filter Pills */}
+              <div className="flex items-center justify-between gap-4 overflow-x-auto pb-1 no-scrollbar">
+                <div className="flex items-center gap-2.5">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mr-1 flex items-center gap-1.5 shrink-0">
+                    <Layers className="w-4 h-4 text-indigo-500" /> Rooms:
+                  </span>
+                  
+                  <button
+                    onClick={() => setSelectedGroupId('all')}
+                    className={`h-11 px-5 rounded-2xl text-xs font-bold transition-all duration-300 cursor-pointer active:scale-95 shadow-xs border shrink-0 ${
+                      selectedGroupId === 'all'
+                        ? 'bg-slate-900 text-white border-transparent font-black shadow-md'
+                        : 'bg-white/90 hover:bg-white text-slate-600 border-white/90'
+                    }`}
+                  >
+                    All Areas
+                  </button>
+
+                  {deviceGroups.map((group) => (
+                    <div key={group.id} className="relative group/pill shrink-0 flex items-center">
+                      <button
+                        onClick={() => setSelectedGroupId(group.id)}
+                        className={`h-11 px-5 rounded-2xl text-xs font-bold transition-all duration-300 cursor-pointer active:scale-95 shadow-xs border ${
+                          selectedGroupId === group.id
+                            ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white border-transparent shadow-indigo-500/25 font-black scale-102'
+                            : 'bg-white/90 hover:bg-white text-slate-700 border-white/90'
+                        }`}
+                      >
+                        {group.name}
+                        <span className={`ml-2 text-[10px] font-mono px-2 py-0.5 rounded-full ${
+                          selectedGroupId === group.id ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-500'
+                        }`}>
+                          {group.entityIds.length}
+                        </span>
+                      </button>
+
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setGroupToEdit(group);
+                          setIsGroupModalOpen(true);
+                        }}
+                        title={`Edit ${group.name}`}
+                        className="ml-1 w-8 h-8 rounded-xl bg-white/70 hover:bg-white text-slate-400 hover:text-indigo-600 flex items-center justify-center cursor-pointer transition shadow-xs border border-white/90"
+                      >
+                        <span className="text-xs font-bold">⚙</span>
+                      </button>
+                    </div>
                   ))}
+
+                  <button
+                    onClick={() => {
+                      setGroupToEdit(null);
+                      setIsGroupModalOpen(true);
+                    }}
+                    className="h-11 px-4 rounded-2xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer bg-indigo-50/80 hover:bg-indigo-100 text-indigo-700 border border-indigo-200/80 shadow-xs shrink-0"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>New Room</span>
+                  </button>
                 </div>
 
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2.5 shrink-0">
                   <button
                     onClick={() => setShowUnavailable(!showUnavailable)}
-                    className={`h-12 px-4 rounded-2xl text-xs font-bold transition flex items-center gap-2 cursor-pointer shadow-sm border ${
+                    className={`h-11 px-4 rounded-2xl text-xs font-bold transition flex items-center gap-2 cursor-pointer shadow-xs border ${
                       showUnavailable
                         ? 'bg-indigo-50 text-indigo-700 border-indigo-200'
                         : 'bg-white/80 text-slate-500 hover:text-slate-800 border-white/90'
@@ -421,15 +549,35 @@ export const App: React.FC = () => {
 
                   <button
                     onClick={() => setIsManageMode(!isManageMode)}
-                    className={`h-12 px-5 rounded-2xl text-xs font-bold transition flex items-center gap-2 cursor-pointer shadow-sm border ${
+                    className={`h-11 px-4 rounded-2xl text-xs font-bold transition flex items-center gap-2 cursor-pointer shadow-xs border ${
                       isManageMode
                         ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white font-black border-transparent shadow-amber-500/25'
                         : 'bg-white/80 hover:bg-white text-slate-700 border-white/90'
                     }`}
                   >
-                    <span>{isManageMode ? 'Done Editing' : 'Customize Cards'}</span>
+                    <span>{isManageMode ? 'Done Editing' : 'Hide / Unhide'}</span>
                   </button>
                 </div>
+              </div>
+
+              {/* Domain Filter Pills Bar */}
+              <div className="flex items-center gap-2.5 overflow-x-auto pb-1 no-scrollbar">
+                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 mr-1 shrink-0">
+                  Filter:
+                </span>
+                {['all', 'light', 'switch', 'climate', 'cover'].map((dom) => (
+                  <button
+                    key={dom}
+                    onClick={() => setSelectedDomain(dom)}
+                    className={`h-10 px-5 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-300 cursor-pointer active:scale-95 shadow-xs border shrink-0 ${
+                      selectedDomain === dom
+                        ? 'bg-slate-800 text-white border-transparent font-black shadow-xs'
+                        : 'bg-white/70 hover:bg-white text-slate-600 border-white/80'
+                    }`}
+                  >
+                    {dom}
+                  </button>
+                ))}
               </div>
 
               {isManageMode && (
@@ -448,29 +596,27 @@ export const App: React.FC = () => {
               )}
 
               {/* SECTION: CLIMATE & AIR CONDITIONING (Grouped Units) */}
-              {(selectedDomain === 'all' || selectedDomain === 'climate') && climateEntities.length > 0 && (
+              {(selectedDomain === 'all' || selectedDomain === 'climate') && displayClimateEntities.length > 0 && (
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
                     <h3 className="text-sm font-bold uppercase tracking-wider text-slate-400">
-                      Air Conditioning & Climate Units ({climateEntities.filter(c => c.state !== 'unavailable').length} online)
+                      Air Conditioning & Climate Units ({displayClimateEntities.filter(c => c.state !== 'unavailable').length} online)
                     </h3>
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {climateEntities
-                      .filter((c) => showUnavailable || c.state !== 'unavailable')
-                      .map((climate) => (
-                        <ClimateUnitCard
-                          key={climate.entity_id}
-                          climateEntity={climate}
-                          customName={customNames[climate.entity_id]}
-                          subSwitches={getSubSwitchesForClimate(climate)}
-                          onAction={(entity, domain, service, serviceData) =>
-                            executeServiceCallWithData(entity, domain, service, serviceData)
-                          }
-                          onRename={(entity) => setRenamingEntity(entity)}
-                          isLoading={loadingEntityId === climate.entity_id}
-                        />
-                      ))}
+                    {displayClimateEntities.map((climate) => (
+                      <ClimateUnitCard
+                        key={climate.entity_id}
+                        climateEntity={climate}
+                        customName={customNames[climate.entity_id]}
+                        subSwitches={getSubSwitchesForClimate(climate)}
+                        onAction={(entity, domain, service, serviceData) =>
+                          executeServiceCallWithData(entity, domain, service, serviceData)
+                        }
+                        onRename={(entity) => setRenamingEntity(entity)}
+                        isLoading={loadingEntityId === climate.entity_id}
+                      />
+                    ))}
                   </div>
                 </div>
               )}
@@ -667,6 +813,27 @@ export const App: React.FC = () => {
           onSave={handleSaveCustomName}
           onReset={handleResetCustomName}
           onClose={() => setRenamingEntity(null)}
+        />
+      )}
+
+      {/* Room / Device Group Modal */}
+      {isGroupModalOpen && (
+        <GroupModal
+          isOpen={isGroupModalOpen}
+          availableEntities={entities.filter((e) => {
+            const [domain] = e.entity_id.split('.');
+            if (!ACTIONABLE_DOMAINS.includes(domain)) return false;
+            if (isAirconSubSwitch(e.entity_id)) return false;
+            return true;
+          })}
+          customNames={customNames}
+          groupToEdit={groupToEdit}
+          onSave={handleSaveGroup}
+          onDelete={handleDeleteGroup}
+          onClose={() => {
+            setIsGroupModalOpen(false);
+            setGroupToEdit(null);
+          }}
         />
       )}
     </div>

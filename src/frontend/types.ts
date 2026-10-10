@@ -34,3 +34,10 @@ export interface GroceryItem {
   category?: string;
   completed: boolean;
 }
+
+export interface DeviceGroup {
+  id: string;
+  name: string;
+  entityIds: string[];
+}
+

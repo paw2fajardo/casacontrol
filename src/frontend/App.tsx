@@ -9,6 +9,7 @@ import { GroupModal } from './components/GroupModal';
 import { ProfileLoginModal } from './components/ProfileLoginModal';
 import { UserManagementModal } from './components/UserManagementModal';
 import { GroceryView } from './components/GroceryView';
+import { ScheduleView } from './components/ScheduleView';
 import { HAEntityState, ScheduleItem, GroceryItem, DeviceGroup, UserProfile } from './types';
 import { 
   Calendar as CalendarIcon, 
@@ -842,68 +843,13 @@ export const App: React.FC = () => {
             </div>
           )}
 
-          {/* TAB 3: SCHEDULE & ROUTINES */}
+          {/* TAB 3: SCHEDULE & CALENDAR */}
           {currentTab === 'schedule' && (
-            <div className="space-y-6 max-w-5xl mx-auto">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="text-2xl font-black tracking-tight text-slate-800 flex items-center gap-2.5">
-                    <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center text-white shadow-sm">
-                      <CalendarIcon className="w-4 h-4" />
-                    </div>
-                    Today's Schedule & Family Tasks
-                  </h2>
-                  <p className="text-[11px] font-semibold text-slate-400 mt-0.5">
-                    Unified calendar and tasks from the shared household Google account.
-                  </p>
-                </div>
-              </div>
-
-              {scheduleError && (
-                <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 text-amber-800 flex items-center gap-3">
-                  <AlertCircle className="w-5 h-5 shrink-0 text-amber-500" />
-                  <span className="text-sm font-semibold">{scheduleError}</span>
-                </div>
-              )}
-
-              <div className="space-y-3.5">
-                {schedule.map((item) => (
-                  <div
-                    key={item.id}
-                    className="glass-card p-5 rounded-2xl flex items-center justify-between group"
-                  >
-                    <div className="flex items-center gap-4">
-                      <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shadow-xs ${
-                        item.type === 'calendar' ? 'bg-indigo-50 text-indigo-600' : 'bg-amber-50 text-amber-600'
-                      }`}>
-                        {item.type === 'calendar' ? <CalendarIcon className="w-6 h-6" /> : <CheckSquare className="w-6 h-6" />}
-                      </div>
-                      <div>
-                        <h4 className="text-base font-extrabold text-slate-800 tracking-tight">{item.title}</h4>
-                        <div className="text-xs font-semibold text-slate-400 flex items-center gap-3 mt-1">
-                          <span className="capitalize text-indigo-600 font-bold">{item.type}</span>
-                          {item.listName && <span>• {item.listName}</span>}
-                          {item.startTime && <span>• {new Date(item.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>}
-                          {item.dueDate && <span>• Due {new Date(item.dueDate).toLocaleDateString()}</span>}
-                        </div>
-                      </div>
-                    </div>
-
-                    <span className="px-3.5 py-1 rounded-full bg-slate-100 text-[11px] font-black text-slate-600 uppercase tracking-wider">
-                      {item.isAllDay ? 'All Day' : 'Scheduled'}
-                    </span>
-                  </div>
-                ))}
-
-                {schedule.length === 0 && !scheduleError && (
-                  <div className="h-72 flex flex-col items-center justify-center rounded-3xl glass-panel text-slate-500">
-                    <CheckCircle2 className="w-12 h-12 text-emerald-500 mb-2 opacity-60" />
-                    <p className="text-lg font-extrabold text-slate-800">All Clear for Today</p>
-                    <p className="text-xs text-slate-400 mt-1">No pending calendar events or active reminders.</p>
-                  </div>
-                )}
-              </div>
-            </div>
+            <ScheduleView
+              schedule={schedule}
+              error={scheduleError}
+              onRefresh={fetchSchedule}
+            />
           )}
 
           {/* TAB 4: GROCERY LIST */}

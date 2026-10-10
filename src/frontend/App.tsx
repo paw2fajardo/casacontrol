@@ -604,11 +604,11 @@ export const App: React.FC = () => {
                     onClick={() => setIsManageMode(!isManageMode)}
                     className={`h-11 px-4 rounded-2xl text-xs font-bold transition flex items-center gap-2 cursor-pointer shadow-xs border ${
                       isManageMode
-                        ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white font-black border-transparent shadow-amber-500/25'
+                        ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white font-black border-transparent shadow-amber-500/25 ring-2 ring-amber-300'
                         : 'bg-white/80 hover:bg-white text-slate-700 border-white/90'
                     }`}
                   >
-                    <span>{isManageMode ? 'Done Editing' : 'Hide / Unhide'}</span>
+                    <span>{isManageMode ? 'Done Editing' : 'Customize & Rename'}</span>
                   </button>
                 </div>
               </div>
@@ -634,9 +634,9 @@ export const App: React.FC = () => {
               </div>
 
               {isManageMode && (
-                <div className="p-4 rounded-2xl bg-amber-50/90 border border-amber-200/80 text-amber-900 text-xs font-semibold flex items-center justify-between shadow-xs">
-                  <span>Tap any card below to hide or unhide it from this tablet's main dashboard.</span>
-                  <span className="font-mono font-bold text-amber-700">{hiddenEntities.length} hidden</span>
+                <div className="p-3.5 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 text-xs font-semibold flex items-center justify-between shadow-xs">
+                  <span><strong>Customize Mode Active:</strong> Tap the pencil (✎) on any device to rename it, or tap the badge to hide/unhide. Device toggles are safely paused.</span>
+                  <span className="font-mono font-bold text-amber-700 bg-amber-100 px-2.5 py-1 rounded-lg shrink-0 ml-3">{hiddenEntities.length} hidden</span>
                 </div>
               )}
 
@@ -668,7 +668,7 @@ export const App: React.FC = () => {
                           onAction={(entity, domain, service, serviceData) =>
                             executeServiceCallWithData(entity, domain, service, serviceData)
                           }
-                          onRename={(entity) => setRenamingEntity(entity)}
+                          onRename={isManageMode ? (entity) => setRenamingEntity(entity) : undefined}
                           isLoading={loadingEntityId === climate.entity_id}
                         />
                       ))}
@@ -707,7 +707,7 @@ export const App: React.FC = () => {
                                 entity={entity}
                                 customName={customNames[entity.entity_id]}
                                 onAction={isManageMode ? () => toggleHideEntity(entity.entity_id) : handleEntityAction}
-                                onRename={(entity) => setRenamingEntity(entity)}
+                                onRename={isManageMode ? (entity) => setRenamingEntity(entity) : undefined}
                                 isLoading={loadingEntityId === entity.entity_id}
                               />
                             </div>

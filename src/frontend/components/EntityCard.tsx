@@ -94,9 +94,9 @@ export const EntityCard: React.FC<EntityCardProps> = ({
                 onRename(entity);
               }}
               title="Rename device"
-              className="w-6 h-6 rounded-md text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 flex items-center justify-center cursor-pointer transition shrink-0"
+              className="px-2 py-0.5 rounded-lg bg-indigo-50 border border-indigo-200 text-indigo-700 hover:bg-indigo-600 hover:text-white flex items-center gap-1 cursor-pointer transition shrink-0 shadow-xs"
             >
-              <span className="text-[11px] font-bold">✎</span>
+              <span className="text-[10px] font-bold">✎ Rename</span>
             </button>
           )}
         </div>

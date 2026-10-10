@@ -585,26 +585,46 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({ schedule, error, onR
                       )}
                     </div>
 
-                    {/* Semantic Dot Indicators (Consistently Indigo for Events, Amber for Tasks) */}
-                    <div className="flex items-center gap-1.5 mt-1">
-                      {eventCount > 0 && (
-                        <div className="flex items-center gap-1">
-                          <span className={`w-2.5 h-2.5 rounded-full ${isSelected ? 'bg-white' : 'bg-indigo-600'}`} />
-                          {eventCount > 1 && (
-                            <span className={`text-[10px] font-bold ${isSelected ? 'text-indigo-100' : 'text-slate-500'}`}>
-                              {eventCount}
-                            </span>
-                          )}
-                        </div>
-                      )}
-                      {taskCount > 0 && (
-                        <div className="flex items-center gap-1">
-                          <span className={`w-2.5 h-2.5 rounded-full ${isSelected ? 'bg-amber-300' : 'bg-amber-500'}`} />
-                          {taskCount > 1 && (
-                            <span className={`text-[10px] font-bold ${isSelected ? 'text-amber-100' : 'text-amber-700'}`}>
-                              {taskCount}
-                            </span>
-                          )}
+                    {/* Small item cards/pills inside the date cell */}
+                    <div className="w-full space-y-1 mt-1.5 flex-1 overflow-hidden">
+                      {cellItems.slice(0, 2).map((item) => {
+                        const isTask = item.type === 'task';
+                        return (
+                          <div
+                            key={item.id}
+                            className={`w-full px-1.5 py-0.5 rounded-md text-[11px] font-bold truncate flex items-center gap-1 leading-tight shadow-2xs ${
+                              isSelected
+                                ? isTask
+                                  ? 'bg-amber-300 text-amber-950'
+                                  : 'bg-white/25 text-white'
+                                : isTask
+                                ? 'bg-amber-100/90 text-amber-900 border border-amber-200/80'
+                                : 'bg-indigo-50/90 text-indigo-900 border border-indigo-200/80'
+                            }`}
+                          >
+                            <span
+                              className={`w-1.5 h-1.5 rounded-full shrink-0 ${
+                                isSelected
+                                  ? isTask
+                                    ? 'bg-amber-900'
+                                    : 'bg-white'
+                                  : isTask
+                                  ? 'bg-amber-600'
+                                  : 'bg-indigo-600'
+                              }`}
+                            />
+                            <span className="truncate">{item.title}</span>
+                          </div>
+                        );
+                      })}
+
+                      {cellItems.length > 2 && (
+                        <div
+                          className={`text-[10px] font-black tracking-tight px-1 ${
+                            isSelected ? 'text-indigo-100' : 'text-slate-400'
+                          }`}
+                        >
+                          +{cellItems.length - 2} more
                         </div>
                       )}
                     </div>

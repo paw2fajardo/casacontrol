@@ -179,17 +179,70 @@ export const App: React.FC = () => {
     setPendingAction(null);
   };
 
-  // Filtered entities for Home tab
-  const filteredEntities = entities.filter((e) => {
-    if (selectedDomain === 'all') return true;
-    return e.entity_id.startsWith(`${selectedDomain}.`);
+  // Actionable controllable domains only
+  const ACTIONABLE_DOMAINS = ['light', 'switch', 'climate', 'cover', 'lock', 'fan'];
+
+  // Persistent user customization: pinned or hidden entities (stored in localStorage)
+  const [hiddenEntities, setHiddenEntities] = useState<string[]>(() => {
+    try {
+      const stored = localStorage.getItem('casacontrol_hidden_entities');
+      return stored ? JSON.parse(stored) : [];
+    } catch {
+      return [];
+    }
   });
 
-  const activeDeviceCount = entities.filter(
-    (e) => e.state === 'on' || e.state === 'open' || e.state === 'unlocked'
-  ).length;
+  const [isManageMode, setIsManageMode] = useState<boolean>(false);
+  const [showUnavailable, setShowUnavailable] = useState<boolean>(false);
 
-  // Security entities
+  const toggleHideEntity = (entityId: string) => {
+    setHiddenEntities((prev) => {
+      const updated = prev.includes(entityId)
+        ? prev.filter((id) => id !== entityId)
+        : [...prev, entityId];
+      try {
+        localStorage.setItem('casacontrol_hidden_entities', JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
+  };
+
+  // Filtered entities for Home tab:
+  // 1. Must belong to actionable domain (light, switch, climate, cover, fan)
+  // 2. Hide sensors, persons, zones, sun, events, conversations
+  // 3. Hide unavailable devices by default unless user toggles showUnavailable
+  // 4. Hide user-hidden entities unless in manage mode
+  const filteredEntities = entities.filter((e) => {
+    const [domain] = e.entity_id.split('.');
+
+    // Domain filter bar
+    if (selectedDomain !== 'all') {
+      if (domain !== selectedDomain) return false;
+    } else {
+      // "All" view only shows real controllable devices, excluding security devices handled in Security tab
+      if (!ACTIONABLE_DOMAINS.includes(domain)) return false;
+      if (isHighImpact(e.entity_id, e.attributes.device_class)) return false;
+    }
+
+    // Hide unavailable devices unless explicitly toggled
+    if (!showUnavailable && (e.state === 'unavailable' || e.state === 'unknown')) {
+      return false;
+    }
+
+    // Hide if user marked as hidden (unless currently in Manage Mode)
+    if (!isManageMode && hiddenEntities.includes(e.entity_id)) {
+      return false;
+    }
+
+    return true;
+  });
+
+  const activeDeviceCount = entities.filter((e) => {
+    const [domain] = e.entity_id.split('.');
+    return ACTIONABLE_DOMAINS.includes(domain) && (e.state === 'on' || e.state === 'open' || e.state === 'unlocked');
+  }).length;
+
+  // Security entities (Locks, Garages, Alarms)
   const securityEntities = entities.filter((e) =>
     isHighImpact(e.entity_id, e.attributes.device_class)
   );
@@ -216,22 +269,55 @@ export const App: React.FC = () => {
           {/* TAB 1: HOME CONTROLS */}
           {currentTab === 'home' && (
             <div className="space-y-6">
-              {/* Domain Filter Pills */}
-              <div className="flex items-center gap-3 overflow-x-auto pb-2 no-scrollbar">
-                {['all', 'light', 'switch', 'climate', 'cover'].map((dom) => (
+              {/* Domain Filter Pills & Tablet Control Bar */}
+              <div className="flex items-center justify-between gap-4 overflow-x-auto pb-2 no-scrollbar">
+                <div className="flex items-center gap-3">
+                  {['all', 'light', 'switch', 'climate', 'cover'].map((dom) => (
+                    <button
+                      key={dom}
+                      onClick={() => setSelectedDomain(dom)}
+                      className={`h-12 px-6 rounded-2xl text-xs font-bold uppercase tracking-wider transition-all duration-200 cursor-pointer active:scale-95 ${
+                        selectedDomain === dom
+                          ? 'bg-amber-500 text-slate-950 shadow-lg shadow-amber-500/25 scale-102'
+                          : 'bg-[#141824] hover:bg-[#1a2030] text-slate-300 border border-slate-800'
+                      }`}
+                    >
+                      {dom}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="flex items-center gap-3">
                   <button
-                    key={dom}
-                    onClick={() => setSelectedDomain(dom)}
-                    className={`h-12 px-6 rounded-2xl text-xs font-bold uppercase tracking-wider transition-all duration-200 cursor-pointer active:scale-95 ${
-                      selectedDomain === dom
-                        ? 'bg-amber-500 text-slate-950 shadow-lg shadow-amber-500/25 scale-102'
-                        : 'bg-[#141824] hover:bg-[#1a2030] text-slate-300 border border-slate-800'
+                    onClick={() => setShowUnavailable(!showUnavailable)}
+                    className={`h-12 px-4 rounded-2xl text-xs font-bold transition flex items-center gap-2 cursor-pointer border ${
+                      showUnavailable
+                        ? 'bg-slate-700 text-white border-slate-600'
+                        : 'bg-[#141824] text-slate-400 hover:text-slate-200 border-slate-800'
                     }`}
                   >
-                    {dom}
+                    <span>{showUnavailable ? 'Showing All' : 'Hiding Inactive'}</span>
                   </button>
-                ))}
+
+                  <button
+                    onClick={() => setIsManageMode(!isManageMode)}
+                    className={`h-12 px-5 rounded-2xl text-xs font-bold transition flex items-center gap-2 cursor-pointer border ${
+                      isManageMode
+                        ? 'bg-amber-500 text-slate-950 font-black border-amber-400 shadow-lg shadow-amber-500/20'
+                        : 'bg-[#141824] hover:bg-[#1a2030] text-slate-300 border-slate-800'
+                    }`}
+                  >
+                    <span>{isManageMode ? 'Done Editing' : 'Customize Cards'}</span>
+                  </button>
+                </div>
               </div>
+
+              {isManageMode && (
+                <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs font-semibold flex items-center justify-between">
+                  <span>Tap any card below to hide or unhide it from this tablet's main dashboard.</span>
+                  <span className="font-mono">{hiddenEntities.length} hidden</span>
+                </div>
+              )}
 
               {/* Status warning pill if HA is offline */}
               {haError && (
@@ -243,14 +329,32 @@ export const App: React.FC = () => {
 
               {/* Entities Grid */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5">
-                {filteredEntities.map((entity) => (
-                  <EntityCard
-                    key={entity.entity_id}
-                    entity={entity}
-                    onAction={handleEntityAction}
-                    isLoading={loadingEntityId === entity.entity_id}
-                  />
-                ))}
+                {filteredEntities.map((entity) => {
+                  const isHidden = hiddenEntities.includes(entity.entity_id);
+                  return (
+                    <div key={entity.entity_id} className="relative">
+                      {isManageMode && (
+                        <button
+                          onClick={() => toggleHideEntity(entity.entity_id)}
+                          className={`absolute -top-2 -right-2 z-20 px-3 py-1.5 rounded-full text-[11px] font-black uppercase tracking-wider cursor-pointer shadow-lg transition ${
+                            isHidden
+                              ? 'bg-red-500 text-white'
+                              : 'bg-emerald-500 text-slate-950'
+                          }`}
+                        >
+                          {isHidden ? 'Hidden' : 'Visible'}
+                        </button>
+                      )}
+                      <div className={isManageMode && isHidden ? 'opacity-30' : ''}>
+                        <EntityCard
+                          entity={entity}
+                          onAction={isManageMode ? () => toggleHideEntity(entity.entity_id) : handleEntityAction}
+                          isLoading={loadingEntityId === entity.entity_id}
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
 
                 {filteredEntities.length === 0 && !haError && (
                   <div className="col-span-full h-64 flex flex-col items-center justify-center border-2 border-dashed border-slate-800 rounded-3xl text-slate-400">

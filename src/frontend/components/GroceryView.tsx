@@ -108,17 +108,17 @@ export const GroceryView: React.FC<GroceryViewProps> = ({ groceries, error }) =>
         </div>
       </div>
 
-      {/* Category Folders Bar (Framer Assets inspiration) */}
-      <div className="flex items-center gap-3 overflow-x-auto pb-2 no-scrollbar">
+      {/* Category Folders Bar (Auto-fit, no awkward wrapping, horizontal scroll) */}
+      <div className="flex items-center gap-3 overflow-x-auto pb-3 pt-1 no-scrollbar flex-nowrap">
         <button
           onClick={() => setSelectedCategory('all')}
-          className={`h-12 px-6 rounded-2xl text-xs font-bold uppercase tracking-wider transition-all duration-300 cursor-pointer active:scale-95 flex items-center gap-2.5 shadow-sm border ${
+          className={`h-12 px-6 rounded-2xl text-xs font-bold uppercase tracking-wider transition-all duration-300 cursor-pointer active:scale-95 flex items-center gap-2.5 shadow-sm border shrink-0 whitespace-nowrap ${
             selectedCategory === 'all'
               ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white border-transparent shadow-indigo-500/25 scale-102 font-extrabold'
               : 'bg-white/80 hover:bg-white text-slate-600 border-white/80'
           }`}
         >
-          <Package className="w-4 h-4" />
+          <Package className="w-4 h-4 shrink-0" />
           <span>All Items ({groceries.length})</span>
         </button>
 
@@ -131,15 +131,15 @@ export const GroceryView: React.FC<GroceryViewProps> = ({ groceries, error }) =>
             <button
               key={catKey}
               onClick={() => setSelectedCategory(catKey)}
-              className={`h-12 px-5 rounded-2xl text-xs font-bold transition-all duration-300 cursor-pointer active:scale-95 flex items-center gap-2.5 shadow-sm border capitalize ${
+              className={`h-12 px-5 rounded-2xl text-xs font-bold transition-all duration-300 cursor-pointer active:scale-95 flex items-center gap-2.5 shadow-sm border capitalize shrink-0 whitespace-nowrap min-w-max ${
                 isSelected
                   ? 'bg-white text-slate-900 border-indigo-400/60 ring-2 ring-indigo-400/20 shadow-md scale-102 font-extrabold'
                   : 'bg-white/70 hover:bg-white text-slate-600 border-white/90'
               }`}
             >
-              <span className={`w-2.5 h-2.5 rounded-full ${style.iconBg}`} />
-              <span>{catKey}</span>
-              <span className="px-2 py-0.5 rounded-full bg-slate-100 text-[10px] font-black text-slate-500">
+              <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${style.iconBg}`} />
+              <span className="whitespace-nowrap">{catKey}</span>
+              <span className="px-2 py-0.5 rounded-full bg-slate-100 text-[10px] font-black text-slate-500 shrink-0">
                 {items.length}
               </span>
             </button>

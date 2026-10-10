@@ -140,7 +140,16 @@ describe('GoogleClient', () => {
             expires_in: 3600,
           }),
         })
-        // 2nd call: calendar events
+        // 2nd call: calendarList
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({
+            items: [
+              { id: 'primary', summary: 'Google Calendar' },
+            ],
+          }),
+        })
+        // 3rd call: calendar events
         .mockResolvedValueOnce({
           ok: true,
           json: async () => ({
@@ -212,6 +221,10 @@ describe('GoogleClient', () => {
           json: async () => ({ access_token: 'valid-token', expires_in: 3600 }),
         })
         .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({ items: [{ id: 'primary', summary: 'Primary' }] }),
+        })
+        .mockResolvedValueOnce({
           ok: false,
           status: 403,
           statusText: 'Forbidden',
@@ -240,6 +253,10 @@ describe('GoogleClient', () => {
         .mockResolvedValueOnce({
           ok: true,
           json: async () => ({ access_token: 'valid-token', expires_in: 3600 }),
+        })
+        .mockResolvedValueOnce({
+          ok: true,
+          json: async () => ({ items: [{ id: 'primary', summary: 'Primary' }] }),
         })
         .mockRejectedValueOnce(new Error('Connection reset by peer'));
 

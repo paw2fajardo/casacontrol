@@ -47,6 +47,18 @@ export function isHighImpactEntity(
     return true;
   }
 
+  // Security switches (e.g. guard_mode, alarm switches)
+  if (domain === 'switch') {
+    if (
+      lowerEntityId.includes('guard_mode') ||
+      lowerEntityId.includes('_alarm') ||
+      lowerEntityId.endsWith('alarm') ||
+      attributes?.device_class === 'security'
+    ) {
+      return true;
+    }
+  }
+
   // Garage doors: cover where device_class is 'garage' or entity_id contains 'garage'
   if (domain === 'cover') {
     const deviceClass = attributes?.device_class?.toLowerCase?.();

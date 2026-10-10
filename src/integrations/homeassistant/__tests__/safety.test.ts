@@ -28,6 +28,11 @@ describe('Safety Enforcement', () => {
       expect(isHighImpactEntity('cover.left_garage')).toBe(true);
     });
 
+    it('identifies security switches like guard mode and alarm switches as high impact', () => {
+      expect(isHighImpactEntity('switch.lumi_sg_274891445_mieu01_guard_mode_p_2_1')).toBe(true);
+      expect(isHighImpactEntity('switch.lumi_sg_274891445_mieu01_alarm_p_3_1')).toBe(true);
+    });
+
     it('returns false for regular covers (blinds, curtains, shades)', () => {
       expect(
         isHighImpactEntity('cover.living_room_blind', { device_class: 'blind' })

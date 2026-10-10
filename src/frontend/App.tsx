@@ -19,6 +19,10 @@ import {
   DoorClosed, 
   DoorOpen, 
   ShieldCheck, 
+  Shield,
+  Activity,
+  Radio,
+  Bell,
   AlertCircle, 
   ShoppingCart,
   CheckCircle2,
@@ -271,12 +275,34 @@ export const App: React.FC = () => {
     };
   }, []);
 
-  // Check if entity is high-impact
+  // Check if entity is high-impact (requires confirmation)
   const isHighImpact = (entityId: string, deviceClass?: string) => {
     const [domain] = entityId.split('.');
+    const lowerId = entityId.toLowerCase();
     if (domain === 'lock') return true;
     if (domain === 'alarm_control_panel') return true;
-    if (domain === 'cover' && (deviceClass === 'garage' || entityId.includes('garage'))) return true;
+    if (domain === 'cover' && (deviceClass === 'garage' || lowerId.includes('garage'))) return true;
+    if (domain === 'switch' && (lowerId.includes('guard_mode') || lowerId.includes('_alarm') || lowerId.endsWith('alarm') || deviceClass === 'security')) {
+      return true;
+    }
+    return false;
+  };
+
+  // Check if entity is a perimeter security sensor (doors, windows, motion)
+  const isSecuritySensor = (entity: HAEntityState) => {
+    const [domain] = entity.entity_id.split('.');
+    const lowerId = entity.entity_id.toLowerCase();
+    const devClass = entity.attributes.device_class?.toLowerCase?.();
+    const name = (entity.attributes.friendly_name || '').toLowerCase();
+
+    if (domain === 'binary_sensor') {
+      if (devClass === 'door' || devClass === 'window' || devClass === 'opening' || devClass === 'motion') {
+        return true;
+      }
+      if (lowerId.includes('motion') || lowerId.includes('contact_state') || name.includes('motion sensor') || name.includes('magnet sensor')) {
+        return true;
+      }
+    }
     return false;
   };
 
@@ -593,6 +619,7 @@ export const App: React.FC = () => {
     if (selectedDomain !== 'all') {
       if (domain !== selectedDomain) return false;
       if (domain === 'switch' && isAirconSubSwitch(e.entity_id)) return false;
+      if (isHighImpact(e.entity_id, e.attributes.device_class)) return false;
     } else {
       if (!ACTIONABLE_DOMAINS.includes(domain)) return false;
       if (domain === 'climate') return false; // Rendered in dedicated Climate section
@@ -618,12 +645,15 @@ export const App: React.FC = () => {
     return ACTIONABLE_DOMAINS.includes(domain) && (e.state === 'on' || e.state === 'open' || e.state === 'unlocked' || (domain === 'climate' && e.state !== 'off'));
   }).length;
 
-  // Security entities (Locks, Garages, Alarms)
-  const securityEntities = entities.filter((e) =>
+  // Security controllable entities (Locks, Garages, Alarms, Guard mode)
+  const securityControls = entities.filter((e) =>
     isHighImpact(e.entity_id, e.attributes.device_class)
   );
 
-  const hasSecurityDevices = securityEntities.length > 0;
+  // Security perimeter sensors (Doors, Windows, Motion sensors)
+  const securitySensors = entities.filter((e) => isSecuritySensor(e));
+
+  const hasSecurityDevices = securityControls.length > 0 || securitySensors.length > 0;
 
   // Auto-redirect to home if currently on security tab but no security devices exist
   useEffect(() => {
@@ -873,40 +903,143 @@ export const App: React.FC = () => {
 
           {/* TAB 2: SECURITY & PERIMETER */}
           {currentTab === 'security' && (
-            <div className="space-y-6 max-w-5xl mx-auto">
+            <div className="space-y-8 max-w-5xl mx-auto">
               <div>
                 <h2 className="text-2xl font-black tracking-tight text-slate-800 flex items-center gap-2.5">
                   <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-emerald-500 to-teal-500 flex items-center justify-center text-white shadow-sm">
-                    <ShieldCheck className="w-4 h-4" />
+                    <ShieldCheck className="w-5 h-5" />
                   </div>
                   Security & Perimeter Center
                 </h2>
                 <p className="text-[11px] font-semibold text-slate-400 mt-0.5">
-                  Protected high-impact home controls. Action confirmation is required on physical toggles.
+                  Live perimeter sensors and protected high-impact controls with required action confirmation.
                 </p>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {securityEntities.map((entity) => (
-                  <EntityCard
-                    key={entity.entity_id}
-                    entity={entity}
-                    customName={customNames[entity.entity_id]}
-                    onAction={handleEntityAction}
-                    onRename={(entity) => setRenamingEntity(entity)}
-                    isLoading={loadingEntityId === entity.entity_id}
-                  />
-                ))}
-
-                {securityEntities.length === 0 && (
-                  <div className="col-span-full h-64 flex flex-col items-center justify-center rounded-3xl glass-panel p-8 text-center">
-                    <ShieldCheck className="w-12 h-12 text-emerald-500 mb-2 opacity-70" />
-                    <h3 className="text-lg font-extrabold text-slate-800">All Perimeters Normal</h3>
-                    <p className="text-xs text-slate-400 mt-1 max-w-md">
-                      No security doors or alarm entities require attention or manual confirmation.
-                    </p>
+              {/* SECTION A: Perimeter Sensor Status Grid */}
+              {securitySensors.length > 0 && (
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-sm font-extrabold uppercase tracking-wider text-slate-500 flex items-center gap-2">
+                      <Radio className="w-4 h-4 text-emerald-500" />
+                      Perimeter & Motion Sensors ({securitySensors.length})
+                    </h3>
                   </div>
-                )}
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3.5">
+                    {securitySensors.map((sensor) => {
+                      const isDoor =
+                        sensor.attributes.device_class === 'door' ||
+                        sensor.entity_id.includes('contact_state') ||
+                        (sensor.attributes.friendly_name || '').toLowerCase().includes('door');
+                      const isMotion =
+                        sensor.attributes.device_class === 'motion' ||
+                        sensor.entity_id.includes('motion') ||
+                        (sensor.attributes.friendly_name || '').toLowerCase().includes('motion');
+
+                      // For contact sensors: 'on' = Open, 'off' = Closed
+                      // For motion sensors: 'on' = Detected, 'off' = Clear
+                      const isOpen = isDoor && sensor.state === 'on';
+                      const isClosed = isDoor && sensor.state === 'off';
+                      const isMotionActive = isMotion && sensor.state === 'on';
+
+                      const rawName =
+                        customNames[sensor.entity_id] ||
+                        sensor.attributes.friendly_name
+                          ?.replace(/Magnet Sensor Contact State/i, '')
+                          ?.replace(/Motion Sensor Motion State/i, '')
+                          ?.trim() ||
+                        sensor.entity_id;
+
+                      return (
+                        <div
+                          key={sensor.entity_id}
+                          className={`p-4 rounded-2xl glass-card border transition-all flex items-center justify-between ${
+                            isOpen || isMotionActive
+                              ? 'bg-amber-500/10 border-amber-300 ring-2 ring-amber-400/30'
+                              : 'border-white/80 bg-white/70'
+                          }`}
+                        >
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div
+                              className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
+                                isOpen || isMotionActive
+                                  ? 'bg-amber-100 text-amber-700'
+                                  : 'bg-emerald-50 text-emerald-600'
+                              }`}
+                            >
+                              {isDoor ? (
+                                isOpen ? <DoorOpen className="w-5 h-5 text-amber-600" /> : <DoorClosed className="w-5 h-5 text-emerald-600" />
+                              ) : isMotion ? (
+                                <Activity className={`w-5 h-5 ${isMotionActive ? 'text-amber-600 animate-pulse' : 'text-slate-400'}`} />
+                              ) : (
+                                <Radio className="w-5 h-5 text-emerald-600" />
+                              )}
+                            </div>
+                            <div className="min-w-0">
+                              <h4 className="text-xs font-black text-slate-800 truncate" title={rawName}>
+                                {rawName}
+                              </h4>
+                              <p className="text-[10px] font-semibold text-slate-400 capitalize">
+                                {isDoor ? 'Contact Sensor' : isMotion ? 'Motion Detector' : 'Perimeter Sensor'}
+                              </p>
+                            </div>
+                          </div>
+
+                          <div
+                            className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider shrink-0 shadow-2xs ${
+                              isOpen
+                                ? 'bg-amber-500 text-white'
+                                : isMotionActive
+                                ? 'bg-amber-500 text-white'
+                                : 'bg-emerald-500 text-white'
+                            }`}
+                          >
+                            {isDoor ? (isOpen ? 'Open' : 'Closed') : isMotion ? (isMotionActive ? 'Motion' : 'Clear') : sensor.state}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* SECTION B: Protected Controls (Alarms, Guard Mode, Locks) */}
+              <div className="space-y-3">
+                <h3 className="text-sm font-extrabold uppercase tracking-wider text-slate-500 flex items-center gap-2">
+                  <Shield className="w-4 h-4 text-indigo-500" />
+                  Protected Controls ({securityControls.length})
+                </h3>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {securityControls.map((entity) => (
+                    <EntityCard
+                      key={entity.entity_id}
+                      entity={entity}
+                      customName={
+                        customNames[entity.entity_id] ||
+                        (entity.entity_id.includes('guard_mode')
+                          ? 'Mi Hub Gateway Guard Mode'
+                          : entity.entity_id.includes('alarm_p_3_1')
+                          ? 'Mi Hub Alarm Siren'
+                          : undefined)
+                      }
+                      onAction={handleEntityAction}
+                      onRename={(entity) => setRenamingEntity(entity)}
+                      isLoading={loadingEntityId === entity.entity_id}
+                    />
+                  ))}
+
+                  {securityControls.length === 0 && (
+                    <div className="col-span-full h-36 flex flex-col items-center justify-center rounded-2xl glass-panel p-6 text-center">
+                      <ShieldCheck className="w-8 h-8 text-emerald-500 mb-1 opacity-70" />
+                      <h4 className="text-sm font-extrabold text-slate-800">No Protected Switches</h4>
+                      <p className="text-[11px] text-slate-400 mt-0.5">
+                        No physical locks or siren switches require manual confirmation.
+                      </p>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           )}

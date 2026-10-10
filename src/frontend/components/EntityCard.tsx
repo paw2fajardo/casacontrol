@@ -18,6 +18,7 @@ export const EntityCard: React.FC<EntityCardProps> = ({
   isLoading,
 }) => {
   const [domain] = entity.entity_id.split('.');
+  const lowerId = entity.entity_id.toLowerCase();
   const name = customName || entity.attributes.friendly_name || entity.entity_id;
   const state = entity.state;
   const isLight = domain === 'light';
@@ -25,7 +26,7 @@ export const EntityCard: React.FC<EntityCardProps> = ({
   const isLock = domain === 'lock';
   const isCover = domain === 'cover';
   const isClimate = domain === 'climate';
-  const isAlarm = domain === 'alarm_control_panel';
+  const isAlarm = domain === 'alarm_control_panel' || (domain === 'switch' && (lowerId.includes('alarm') || lowerId.includes('guard_mode')));
 
   const isOn = state === 'on' || state === 'open' || state === 'unlocked';
   const isLocked = state === 'locked';
@@ -44,11 +45,11 @@ export const EntityCard: React.FC<EntityCardProps> = ({
 
   const getIcon = () => {
     if (isLight) return <Lightbulb className={`w-7 h-7 ${isOn ? 'text-amber-500 fill-amber-500/20' : 'text-slate-400'}`} />;
+    if (isAlarm) return <ShieldCheck className={`w-7 h-7 ${isOn ? 'text-emerald-500' : 'text-slate-400'}`} />;
     if (isSwitch) return <Power className={`w-7 h-7 ${isOn ? 'text-indigo-500' : 'text-slate-400'}`} />;
     if (isLock) return isLocked ? <Lock className="w-7 h-7 text-emerald-500" /> : <Unlock className="w-7 h-7 text-amber-500" />;
     if (isCover) return state === 'closed' ? <DoorClosed className="w-7 h-7 text-emerald-500" /> : <DoorOpen className="w-7 h-7 text-amber-500" />;
     if (isClimate) return <Thermometer className="w-7 h-7 text-indigo-500" />;
-    if (isAlarm) return <ShieldCheck className="w-7 h-7 text-emerald-500" />;
     return <Power className="w-7 h-7 text-slate-400" />;
   };
 
@@ -56,7 +57,9 @@ export const EntityCard: React.FC<EntityCardProps> = ({
     <div
       onClick={handleToggle}
       className={`glass-card group relative min-h-[96px] p-3.5 rounded-2xl transition-all duration-300 flex flex-col justify-between cursor-pointer select-none active:scale-[0.98] ${
-        isOn && (isLight || isSwitch)
+        isOn && isAlarm
+          ? 'ring-2 ring-emerald-400/50 bg-gradient-to-br from-white/95 to-emerald-50/50 shadow-sm'
+          : isOn && (isLight || isSwitch)
           ? 'ring-2 ring-indigo-400/50 bg-gradient-to-br from-white/95 to-indigo-50/50 shadow-sm'
           : isLock && isLocked
           ? 'ring-2 ring-emerald-400/50 bg-gradient-to-br from-white/95 to-emerald-50/50 shadow-sm'

@@ -1,0 +1,43 @@
+services:
+  casacontrol:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: casacontrol:latest
+    container_name: casacontrol
+    restart: unless-stopped
+    ports:
+      - "${PORT:-3000}:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - HOST=0.0.0.0
+      - CARTSYNC_BASE_URL=${CARTSYNC_BASE_URL:-http://192.168.10.200:9090}
+      - CARTSYNC_AUTH_TOKEN=${CARTSYNC_AUTH_TOKEN:-}
+      - HOMEASSISTANT_BASE_URL=${HOMEASSISTANT_BASE_URL:-http://192.168.10.200:8123}
+      - HOMEASSISTANT_AUTH_TOKEN=${HOMEASSISTANT_AUTH_TOKEN:-}
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET:-}
+      - GOOGLE_REFRESH_TOKEN=${GOOGLE_REFRESH_TOKEN:-}
+    networks:
+      - casacontrol_network
+
+networks:
+  casacontrol_network:
+    name: casacontrol_network
+    driver: bridge
+
+# Note on container-to-container direct networking (optional):
+# If co-locating on the same Portainer host and desiring direct container network access
+# instead of the host LAN IP (192.168.10.200), you can join existing external networks:
+#
+# networks:
+#   casacontrol_network:
+#     name: casacontrol_network
+#     driver: bridge
+#   cartsync_network:
+#     external: true
+#     name: cartsync_default
+#   homeassistant_network:
+#     external: true
+#     name: homeassistant_default

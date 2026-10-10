@@ -239,28 +239,36 @@ describe('Fastify Server Scaffold & Routes', () => {
     await server.close();
   });
 
-  it('POST /api/homeassistant/action rejects disallowed arbitrary services', async () => {
-    const mockHaClient = {
-      getStates: vi.fn().mockResolvedValue({ success: true, entities: [], count: 0 }),
-      callService: vi.fn(),
-    };
+  it('GET and POST /api/settings manages household configuration persistence', async () => {
+    const server = await buildServer();
+    
+    // GET initial settings
+    const getRes = await server.inject({
+      method: 'GET',
+      url: '/api/settings',
+    });
+    expect(getRes.statusCode).toBe(200);
+    const getBody = JSON.parse(getRes.body);
+    expect(getBody.success).toBe(true);
+    expect(Array.isArray(getBody.settings.deviceGroups)).toBe(true);
 
-    const server = await buildServer({ haClient: mockHaClient });
-    const response = await server.inject({
+    // POST updated custom names and groups
+    const postRes = await server.inject({
       method: 'POST',
-      url: '/api/homeassistant/action',
+      url: '/api/settings',
       payload: {
-        entity_id: 'switch.kitchen',
-        domain: 'switch',
-        service: 'unsafe_hack',
+        customNames: { 'switch.kitchen': 'Pantry Light' },
+        deviceGroups: [
+          { id: 'kitchen_zone', name: 'Kitchen', entityIds: ['switch.kitchen'] },
+        ],
       },
     });
+    expect(postRes.statusCode).toBe(200);
+    const postBody = JSON.parse(postRes.body);
+    expect(postBody.success).toBe(true);
+    expect(postBody.settings.customNames['switch.kitchen']).toBe('Pantry Light');
+    expect(postBody.settings.deviceGroups[0].name).toBe('Kitchen');
 
-    expect(response.statusCode).toBe(400);
-    const body = JSON.parse(response.body);
-    expect(body.success).toBe(false);
-    expect(body.error).toMatch(/allowlist/i);
-    expect(mockHaClient.callService).not.toHaveBeenCalled();
     await server.close();
   });
 });

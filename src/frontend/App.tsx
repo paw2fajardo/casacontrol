@@ -124,9 +124,30 @@ export const App: React.FC = () => {
     }
   };
 
+  // Fetch household settings (custom groups, names, hidden entities)
+  const fetchSettings = async () => {
+    try {
+      const res = await fetch('/api/settings');
+      const data = await res.json();
+      if (data.success && data.settings) {
+        if (Array.isArray(data.settings.deviceGroups)) {
+          setDeviceGroups(data.settings.deviceGroups);
+        }
+        if (data.settings.customNames && typeof data.settings.customNames === 'object') {
+          setCustomNames(data.settings.customNames);
+        }
+        if (Array.isArray(data.settings.hiddenEntities)) {
+          setHiddenEntities(data.settings.hiddenEntities);
+        }
+      }
+    } catch (err) {
+      console.warn('Failed to fetch household settings from server, using local fallback:', err);
+    }
+  };
+
   const handleRefreshAll = async () => {
     setIsRefreshing(true);
-    await Promise.all([fetchEntities(), fetchSchedule(), fetchGroceries()]);
+    await Promise.all([fetchEntities(), fetchSchedule(), fetchGroceries(), fetchSettings()]);
     setIsRefreshing(false);
   };
 
@@ -137,7 +158,8 @@ export const App: React.FC = () => {
     const slowInterval = setInterval(() => {
       fetchSchedule();
       fetchGroceries();
-    }, 60000);
+      fetchSettings();
+    }, 30000);
 
     return () => {
       clearInterval(haInterval);
@@ -235,6 +257,23 @@ export const App: React.FC = () => {
     }
   });
 
+  // Helper to sync settings to server
+  const syncSettingsToServer = async (patch: {
+    deviceGroups?: DeviceGroup[];
+    customNames?: Record<string, string>;
+    hiddenEntities?: string[];
+  }) => {
+    try {
+      await fetch('/api/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(patch),
+      });
+    } catch (err) {
+      console.warn('Failed to persist settings to server:', err);
+    }
+  };
+
   const [renamingEntity, setRenamingEntity] = useState<HAEntityState | null>(null);
 
   const handleSaveCustomName = (entityId: string, newName: string) => {
@@ -243,6 +282,7 @@ export const App: React.FC = () => {
       try {
         localStorage.setItem('casacontrol_custom_names', JSON.stringify(updated));
       } catch {}
+      syncSettingsToServer({ customNames: updated });
       return updated;
     });
   };
@@ -254,16 +294,16 @@ export const App: React.FC = () => {
       try {
         localStorage.setItem('casacontrol_custom_names', JSON.stringify(updated));
       } catch {}
+      syncSettingsToServer({ customNames: updated });
       return updated;
     });
   };
 
-  // Persistent user customization: custom device groups / rooms (stored in localStorage)
+  // Persistent user customization: custom device groups / rooms (synced with server)
   const [deviceGroups, setDeviceGroups] = useState<DeviceGroup[]>(() => {
     try {
       const stored = localStorage.getItem('casacontrol_device_groups');
       if (stored) return JSON.parse(stored);
-      // Sensible defaults based on known household areas
       return [
         {
           id: 'group_master_bedroom',
@@ -305,6 +345,7 @@ export const App: React.FC = () => {
       try {
         localStorage.setItem('casacontrol_device_groups', JSON.stringify(updated));
       } catch {}
+      syncSettingsToServer({ deviceGroups: updated });
       return updated;
     });
   };
@@ -315,6 +356,7 @@ export const App: React.FC = () => {
       try {
         localStorage.setItem('casacontrol_device_groups', JSON.stringify(updated));
       } catch {}
+      syncSettingsToServer({ deviceGroups: updated });
       return updated;
     });
     if (selectedGroupId === groupId) {
@@ -322,7 +364,7 @@ export const App: React.FC = () => {
     }
   };
 
-  // Persistent user customization: pinned or hidden entities (stored in localStorage)
+  // Persistent user customization: pinned or hidden entities
   const [hiddenEntities, setHiddenEntities] = useState<string[]>(() => {
     try {
       const stored = localStorage.getItem('casacontrol_hidden_entities');
@@ -343,6 +385,7 @@ export const App: React.FC = () => {
       try {
         localStorage.setItem('casacontrol_hidden_entities', JSON.stringify(updated));
       } catch {}
+      syncSettingsToServer({ hiddenEntities: updated });
       return updated;
     });
   };

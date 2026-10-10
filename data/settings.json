@@ -1,0 +1,15 @@
+{
+  "deviceGroups": [
+    {
+      "id": "kitchen_zone",
+      "name": "Kitchen",
+      "entityIds": [
+        "switch.kitchen"
+      ]
+    }
+  ],
+  "customNames": {
+    "switch.kitchen": "Pantry Light"
+  },
+  "hiddenEntities": []
+}

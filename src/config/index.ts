@@ -7,6 +7,7 @@ export interface AppConfig {
   PORT: number;
   HOST: string;
   NODE_ENV: string;
+  DATA_DIR: string;
   CARTSYNC_BASE_URL: string;
   CARTSYNC_AUTH_TOKEN?: string;
   HOMEASSISTANT_BASE_URL?: string;
@@ -22,6 +23,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
     PORT: port,
     HOST: env.HOST || '0.0.0.0',
     NODE_ENV: env.NODE_ENV || 'development',
+    DATA_DIR: env.DATA_DIR || './data',
     CARTSYNC_BASE_URL: env.CARTSYNC_BASE_URL || 'http://cartsync:3001',
     CARTSYNC_AUTH_TOKEN: env.CARTSYNC_AUTH_TOKEN || undefined,
     HOMEASSISTANT_BASE_URL: env.HOMEASSISTANT_BASE_URL || undefined,

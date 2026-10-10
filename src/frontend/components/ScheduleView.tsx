@@ -189,6 +189,21 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({ schedule, error, onR
     return days;
   }, [itemsByDate, today]);
 
+  // Agenda view strictly scoped to future / upcoming items (from beginning of today forward)
+  const futureAgendaItems = useMemo(() => {
+    const startOfTodayMs = new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime();
+
+    return filteredSchedule.filter((item) => {
+      const dateStr = item.start || item.startTime || item.dueDate;
+      if (!dateStr) return false;
+      const itemTime = new Date(dateStr).getTime();
+      if (isNaN(itemTime)) return false;
+
+      // Keep if on or after midnight of today
+      return itemTime >= startOfTodayMs;
+    });
+  }, [filteredSchedule, today]);
+
   return (
     <div className="space-y-4 max-w-7xl mx-auto h-full flex flex-col">
       {/* Top Controls Bar */}
@@ -692,10 +707,19 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({ schedule, error, onR
         </div>
       )}
 
-      {/* VIEW 3: FULL AGENDA VIEW */}
+      {/* VIEW 3: FULL AGENDA VIEW (Upcoming & Future Only) */}
       {viewMode === 'agenda' && (
         <div className="glass-card rounded-3xl p-6 border border-white/90 shadow-sm flex-1 overflow-y-auto no-scrollbar space-y-3">
-          {filteredSchedule.map((item) => {
+          <div className="flex items-center justify-between pb-2 mb-1 border-b border-slate-100">
+            <span className="text-xs font-black uppercase tracking-wider text-slate-400">
+              Upcoming Schedule ({futureAgendaItems.length})
+            </span>
+            <span className="text-xs font-semibold text-slate-400">
+              Showing today & upcoming events
+            </span>
+          </div>
+
+          {futureAgendaItems.map((item) => {
             const itemDate = new Date(item.start || item.startTime || item.dueDate || '');
             const isValidDate = !isNaN(itemDate.getTime());
             const isTask = item.type === 'task';
@@ -761,11 +785,11 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({ schedule, error, onR
             );
           })}
 
-          {filteredSchedule.length === 0 && (
+          {futureAgendaItems.length === 0 && (
             <div className="h-72 flex flex-col items-center justify-center rounded-3xl text-center text-slate-400">
               <Sparkles className="w-10 h-10 mb-2 opacity-30 text-indigo-400" />
-              <p className="text-base font-bold text-slate-700">No scheduled items found</p>
-              <p className="text-xs text-slate-400 mt-1">Calendar and task lists are clear.</p>
+              <p className="text-base font-bold text-slate-700">No upcoming events or tasks</p>
+              <p className="text-xs text-slate-400 mt-1">Everything is clear for the days ahead.</p>
             </div>
           )}
         </div>

@@ -74,9 +74,9 @@ export const ClimateUnitCard: React.FC<ClimateUnitProps> = ({
               <Wind className="w-8 h-8" />
             </div>
             <div>
-              <h3 className="text-xl font-extrabold text-slate-800 tracking-tight">{name}</h3>
-              <div className="flex items-center gap-3 mt-1">
-                <span className={`text-xs font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-full ${
+              <h3 className="text-lg font-black text-slate-800 tracking-tight leading-tight">{name}</h3>
+              <div className="flex items-center gap-2.5 mt-1">
+                <span className={`text-[11px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${
                   isOn ? 'bg-indigo-50 text-indigo-700 border border-indigo-200/60' : 'bg-slate-100 text-slate-500'
                 }`}>
                   {hvacMode}

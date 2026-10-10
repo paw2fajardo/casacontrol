@@ -466,13 +466,13 @@ export const App: React.FC = () => {
           {currentTab === 'security' && (
             <div className="space-y-6 max-w-5xl mx-auto">
               <div>
-                <h2 className="text-3xl font-extrabold tracking-tight text-slate-800 flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-emerald-500 to-teal-500 flex items-center justify-center text-white shadow-md shadow-emerald-500/20">
-                    <ShieldCheck className="w-5 h-5" />
+                <h2 className="text-2xl font-black tracking-tight text-slate-800 flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-emerald-500 to-teal-500 flex items-center justify-center text-white shadow-sm">
+                    <ShieldCheck className="w-4 h-4" />
                   </div>
                   Security & Perimeter Center
                 </h2>
-                <p className="text-xs font-semibold text-slate-400 mt-1">
+                <p className="text-[11px] font-semibold text-slate-400 mt-0.5">
                   Protected high-impact home controls. Action confirmation is required on physical toggles.
                 </p>
               </div>
@@ -488,9 +488,9 @@ export const App: React.FC = () => {
                 ))}
 
                 {securityEntities.length === 0 && (
-                  <div className="col-span-full h-72 flex flex-col items-center justify-center rounded-3xl glass-panel p-8 text-center">
-                    <ShieldCheck className="w-14 h-14 text-emerald-500 mb-3 opacity-70" />
-                    <h3 className="text-xl font-extrabold text-slate-800">All Perimeters Normal</h3>
+                  <div className="col-span-full h-64 flex flex-col items-center justify-center rounded-3xl glass-panel p-8 text-center">
+                    <ShieldCheck className="w-12 h-12 text-emerald-500 mb-2 opacity-70" />
+                    <h3 className="text-lg font-extrabold text-slate-800">All Perimeters Normal</h3>
                     <p className="text-xs text-slate-400 mt-1 max-w-md">
                       No security doors or alarm entities require attention or manual confirmation.
                     </p>
@@ -505,13 +505,13 @@ export const App: React.FC = () => {
             <div className="space-y-6 max-w-5xl mx-auto">
               <div className="flex items-center justify-between">
                 <div>
-                  <h2 className="text-3xl font-extrabold tracking-tight text-slate-800 flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center text-white shadow-md shadow-indigo-500/20">
-                      <CalendarIcon className="w-5 h-5" />
+                  <h2 className="text-2xl font-black tracking-tight text-slate-800 flex items-center gap-2.5">
+                    <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center text-white shadow-sm">
+                      <CalendarIcon className="w-4 h-4" />
                     </div>
                     Today's Schedule & Family Tasks
                   </h2>
-                  <p className="text-xs font-semibold text-slate-400 mt-1">
+                  <p className="text-[11px] font-semibold text-slate-400 mt-0.5">
                     Unified calendar and tasks from the shared household Google account.
                   </p>
                 </div>

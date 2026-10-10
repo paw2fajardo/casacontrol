@@ -33,17 +33,17 @@ export const Header: React.FC<HeaderProps> = ({
 
   return (
     <header className="h-20 bg-white/60 backdrop-blur-2xl border-b border-white/80 px-8 flex items-center justify-between shrink-0 z-10 shadow-[0_4px_20px_rgba(148,163,184,0.05)]">
-      <div className="flex items-center gap-6">
+      <div className="flex items-center gap-5">
         <div>
-          <div className="text-3xl font-extrabold tracking-tight text-slate-800 font-mono">{time}</div>
-          <div className="text-xs font-bold text-slate-500 uppercase tracking-wider">{date}</div>
+          <div className="text-2xl font-black tracking-tight text-slate-800 font-mono leading-none">{time}</div>
+          <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mt-0.5">{date}</div>
         </div>
 
-        <div className="h-8 w-[1px] bg-slate-200/80 mx-2" />
+        <div className="h-6 w-[1px] bg-slate-200/80 mx-1" />
 
         <div className="flex items-center gap-3">
-          <div className="px-3.5 py-1.5 rounded-xl bg-indigo-50/80 border border-indigo-100 flex items-center gap-2 shadow-sm">
-            <span className="w-2.5 h-2.5 rounded-full bg-indigo-500" />
+          <div className="px-3 py-1 rounded-xl bg-indigo-50/80 border border-indigo-100 flex items-center gap-2 shadow-xs">
+            <span className="w-2 h-2 rounded-full bg-indigo-500" />
             <span className="text-xs font-bold text-indigo-900">
               {activeCount} {activeCount === 1 ? 'Device' : 'Devices'} Active
             </span>

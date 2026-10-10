@@ -139,13 +139,13 @@ export const GroceryView: React.FC<GroceryViewProps> = ({ groceries, error }) =>
       {/* Header bar with controls */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h2 className="text-3xl font-extrabold tracking-tight text-slate-800 flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center text-white shadow-md shadow-indigo-500/20">
-              <ShoppingCart className="w-5 h-5" />
+          <h2 className="text-2xl font-black tracking-tight text-slate-800 flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-indigo-500 to-purple-500 flex items-center justify-center text-white shadow-sm">
+              <ShoppingCart className="w-4 h-4" />
             </div>
             CartSync Groceries
           </h2>
-          <p className="text-xs font-semibold text-slate-400 mt-1">
+          <p className="text-[11px] font-semibold text-slate-400 mt-0.5">
             Household essentials synced in real-time from CartSync.
           </p>
         </div>

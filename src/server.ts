@@ -53,6 +53,14 @@ export async function buildServer(options: BuildServerOptions = {}): Promise<Fas
     googleClient: options.googleClient,
   });
 
+  // SPA fallback for HTML5 History API routes (/home, /security, /schedule, /groceries)
+  server.setNotFoundHandler((request, reply) => {
+    if (request.raw.url && request.raw.url.startsWith('/api')) {
+      return reply.code(404).send({ error: 'Not Found', message: `Route ${request.method}:${request.url} not found` });
+    }
+    return reply.sendFile('index.html');
+  });
+
   return server;
 }
 

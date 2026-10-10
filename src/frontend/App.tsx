@@ -22,7 +22,33 @@ import {
 } from 'lucide-react';
 
 export const App: React.FC = () => {
-  const [currentTab, setCurrentTab] = useState<NavTab>('home');
+  // Sync tab with URL path (/home, /security, /schedule, /groceries)
+  const getTabFromPath = (): NavTab => {
+    const path = window.location.pathname.replace(/^\//, '').toLowerCase();
+    if (path === 'security') return 'security';
+    if (path === 'schedule') return 'schedule';
+    if (path === 'groceries') return 'groceries';
+    return 'home';
+  };
+
+  const [currentTab, setCurrentTab] = useState<NavTab>(getTabFromPath);
+
+  const handleSelectTab = (tab: NavTab) => {
+    setCurrentTab(tab);
+    const targetPath = `/${tab}`;
+    if (window.location.pathname !== targetPath) {
+      window.history.pushState(null, '', targetPath);
+    }
+  };
+
+  useEffect(() => {
+    const handlePopState = () => {
+      setCurrentTab(getTabFromPath());
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
   const [entities, setEntities] = useState<HAEntityState[]>([]);
   const [schedule, setSchedule] = useState<ScheduleItem[]>([]);
   const [groceries, setGroceries] = useState<GroceryItem[]>([]);
@@ -287,7 +313,7 @@ export const App: React.FC = () => {
       {/* Persistent Left Sidebar */}
       <Sidebar
         currentTab={currentTab}
-        onSelectTab={setCurrentTab}
+        onSelectTab={handleSelectTab}
         groceryCount={groceries.length}
         upcomingCount={schedule.length}
       />

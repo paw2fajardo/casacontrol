@@ -4,24 +4,30 @@ import { HAEntityState } from '../types';
 
 interface ClimateUnitProps {
   climateEntity: HAEntityState;
+  customName?: string;
   subSwitches: HAEntityState[];
   onAction: (entity: HAEntityState, domain: string, service: string, serviceData?: any) => void;
+  onRename?: (entity: HAEntityState) => void;
   isLoading: boolean;
 }
 
 export const ClimateUnitCard: React.FC<ClimateUnitProps> = ({
   climateEntity,
+  customName,
   subSwitches,
   onAction,
+  onRename,
   isLoading,
 }) => {
   const [isExpanded, setIsExpanded] = useState<boolean>(false);
 
-  const name =
+  const defaultName =
     climateEntity.attributes.friendly_name
       ?.replace(/\(.*?\) Climate/i, '')
       ?.replace(/ Climate/i, '')
       ?.trim() || climateEntity.entity_id;
+
+  const name = customName || defaultName;
 
   const currentTemp = climateEntity.attributes.current_temperature;
   const targetTemp = climateEntity.attributes.temperature;
@@ -74,7 +80,21 @@ export const ClimateUnitCard: React.FC<ClimateUnitProps> = ({
               <Wind className="w-8 h-8" />
             </div>
             <div>
-              <h3 className="text-lg font-black text-slate-800 tracking-tight leading-tight">{name}</h3>
+              <div className="flex items-center gap-2">
+                <h3 className="text-lg font-black text-slate-800 tracking-tight leading-tight">{name}</h3>
+                {onRename && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onRename(climateEntity);
+                    }}
+                    title="Rename aircon"
+                    className="w-7 h-7 rounded-lg text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 flex items-center justify-center cursor-pointer transition"
+                  >
+                    <span className="text-xs font-bold">✎</span>
+                  </button>
+                )}
+              </div>
               <div className="flex items-center gap-2.5 mt-1">
                 <span className={`text-[11px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full ${
                   isOn ? 'bg-indigo-50 text-indigo-700 border border-indigo-200/60' : 'bg-slate-100 text-slate-500'

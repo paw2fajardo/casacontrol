@@ -4,13 +4,21 @@ import { HAEntityState } from '../types';
 
 interface EntityCardProps {
   entity: HAEntityState;
+  customName?: string;
   onAction: (entity: HAEntityState, domain: string, service: string) => void;
+  onRename?: (entity: HAEntityState) => void;
   isLoading: boolean;
 }
 
-export const EntityCard: React.FC<EntityCardProps> = ({ entity, onAction, isLoading }) => {
+export const EntityCard: React.FC<EntityCardProps> = ({
+  entity,
+  customName,
+  onAction,
+  onRename,
+  isLoading,
+}) => {
   const [domain] = entity.entity_id.split('.');
-  const name = entity.attributes.friendly_name || entity.entity_id;
+  const name = customName || entity.attributes.friendly_name || entity.entity_id;
   const state = entity.state;
   const isLight = domain === 'light';
   const isSwitch = domain === 'switch';
@@ -75,9 +83,23 @@ export const EntityCard: React.FC<EntityCardProps> = ({ entity, onAction, isLoad
       </div>
 
       <div>
-        <h4 className="text-base font-extrabold text-slate-800 tracking-tight line-clamp-1 group-hover:text-indigo-600 transition">
-          {name}
-        </h4>
+        <div className="flex items-center justify-between gap-2">
+          <h4 className="text-base font-extrabold text-slate-800 tracking-tight line-clamp-1 group-hover:text-indigo-600 transition flex-1">
+            {name}
+          </h4>
+          {onRename && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onRename(entity);
+              }}
+              title="Rename device"
+              className="w-7 h-7 rounded-lg text-slate-300 hover:text-indigo-600 hover:bg-indigo-50 flex items-center justify-center cursor-pointer transition opacity-0 group-hover:opacity-100"
+            >
+              <span className="text-xs font-bold">✎</span>
+            </button>
+          )}
+        </div>
         <div className="text-xs font-semibold text-slate-400 flex items-center gap-2 mt-0.5">
           <span className="capitalize">{domain}</span>
           {entity.attributes.current_temperature && (

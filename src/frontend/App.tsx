@@ -4,6 +4,7 @@ import { Header } from './components/Header';
 import { EntityCard } from './components/EntityCard';
 import { ClimateUnitCard } from './components/ClimateUnitCard';
 import { ConfirmationModal } from './components/ConfirmationModal';
+import { RenameModal } from './components/RenameModal';
 import { GroceryView } from './components/GroceryView';
 import { HAEntityState, ScheduleItem, GroceryItem } from './types';
 import { 
@@ -221,6 +222,39 @@ export const App: React.FC = () => {
   // Actionable controllable domains only
   const ACTIONABLE_DOMAINS = ['light', 'switch', 'climate', 'cover', 'lock', 'fan'];
 
+  // Persistent user customization: custom device names (stored in localStorage)
+  const [customNames, setCustomNames] = useState<Record<string, string>>(() => {
+    try {
+      const stored = localStorage.getItem('casacontrol_custom_names');
+      return stored ? JSON.parse(stored) : {};
+    } catch {
+      return {};
+    }
+  });
+
+  const [renamingEntity, setRenamingEntity] = useState<HAEntityState | null>(null);
+
+  const handleSaveCustomName = (entityId: string, newName: string) => {
+    setCustomNames((prev) => {
+      const updated = { ...prev, [entityId]: newName };
+      try {
+        localStorage.setItem('casacontrol_custom_names', JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
+  };
+
+  const handleResetCustomName = (entityId: string) => {
+    setCustomNames((prev) => {
+      const updated = { ...prev };
+      delete updated[entityId];
+      try {
+        localStorage.setItem('casacontrol_custom_names', JSON.stringify(updated));
+      } catch {}
+      return updated;
+    });
+  };
+
   // Persistent user customization: pinned or hidden entities (stored in localStorage)
   const [hiddenEntities, setHiddenEntities] = useState<string[]>(() => {
     try {
@@ -428,10 +462,12 @@ export const App: React.FC = () => {
                         <ClimateUnitCard
                           key={climate.entity_id}
                           climateEntity={climate}
+                          customName={customNames[climate.entity_id]}
                           subSwitches={getSubSwitchesForClimate(climate)}
                           onAction={(entity, domain, service, serviceData) =>
                             executeServiceCallWithData(entity, domain, service, serviceData)
                           }
+                          onRename={(entity) => setRenamingEntity(entity)}
                           isLoading={loadingEntityId === climate.entity_id}
                         />
                       ))}
@@ -467,7 +503,9 @@ export const App: React.FC = () => {
                       <div className={isManageMode && isHidden ? 'opacity-30' : ''}>
                         <EntityCard
                           entity={entity}
+                          customName={customNames[entity.entity_id]}
                           onAction={isManageMode ? () => toggleHideEntity(entity.entity_id) : handleEntityAction}
+                          onRename={(entity) => setRenamingEntity(entity)}
                           isLoading={loadingEntityId === entity.entity_id}
                         />
                       </div>
@@ -507,7 +545,9 @@ export const App: React.FC = () => {
                   <EntityCard
                     key={entity.entity_id}
                     entity={entity}
+                    customName={customNames[entity.entity_id]}
                     onAction={handleEntityAction}
+                    onRename={(entity) => setRenamingEntity(entity)}
                     isLoading={loadingEntityId === entity.entity_id}
                   />
                 ))}
@@ -609,6 +649,26 @@ export const App: React.FC = () => {
         onConfirm={handleConfirmModal}
         isLoading={isExecutingAction}
       />
+
+      {/* Device Rename Modal */}
+      {renamingEntity && (
+        <RenameModal
+          isOpen={!!renamingEntity}
+          entityId={renamingEntity.entity_id}
+          currentName={
+            customNames[renamingEntity.entity_id] ||
+            renamingEntity.attributes.friendly_name?.replace(/\(.*?\) Climate/i, '')?.replace(/ Climate/i, '')?.trim() ||
+            renamingEntity.entity_id
+          }
+          defaultName={
+            renamingEntity.attributes.friendly_name?.replace(/\(.*?\) Climate/i, '')?.replace(/ Climate/i, '')?.trim() ||
+            renamingEntity.entity_id
+          }
+          onSave={handleSaveCustomName}
+          onReset={handleResetCustomName}
+          onClose={() => setRenamingEntity(null)}
+        />
+      )}
     </div>
   );
 };
